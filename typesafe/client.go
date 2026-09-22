@@ -38,7 +38,7 @@ type Options struct {
 	Retry *RetryPolicy
 }
 
-// Evaluator is the evaluation boundary used by ADK adapters and evaluation tools.
+// Evaluator is the evaluation boundary used by ADK adapters.
 type Evaluator interface {
 	Evaluate(context.Context, *Request) (*Response, error)
 }

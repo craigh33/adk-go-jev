@@ -10,7 +10,7 @@
 
 [TypeSafe AI](https://typesafe.ai/) System One integration for [adk-go](https://github.com/google/adk-go), bringing Choice, Score, and Noul primitives to Go agents and workflows with models such as [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev).
 
-Provides a typed HTTP client, ADK function tool, classification and routing agent, assessment callbacks, and evaluation harness. The client is a temporary bridge until TypeSafe publishes a Go SDK; its API types are generated from TypeSafe's OpenAPI schema.
+Provides a typed HTTP client, ADK function tool, classification and routing agent, and assessment callbacks. The client is a temporary bridge until TypeSafe publishes a Go SDK; its API types are generated from TypeSafe's OpenAPI schema.
 
 **Other providers:** [adk-go-bedrock](https://github.com/craigh33/adk-go-bedrock) · [adk-go-ollama](https://github.com/craigh33/adk-go-ollama) · [adk-go-kronk](https://github.com/craigh33/adk-go-kronk)
 
@@ -125,21 +125,12 @@ Omit `Routing` for a standalone classification agent. `State` defaults to the in
 
 Set `OutputKey` to persist the latest assessment and decision. API, policy, and state-storage errors propagate. Assessments inform application policy; they do not replace authorization checks. See the [callback example](examples/systemone-assessment) for all three hooks with an explicit Noul threshold.
 
-## Evaluate routing quality
-
-```bash
-go run ./cmd/typesafe-eval -dataset examples/evaluation/tickets.json > report.json
-```
-
-The harness measures labelled Choice accuracy, fallback rate, coverage, latency percentiles, and token usage using the router's confidence rule. Compare thresholds with `-min-confidence` and models with `-model`. It requires `TYPESAFE_API_KEY`; see [evaluation datasets and metrics](examples/evaluation).
-
 ## Examples
 
 - [`examples/typesafe-evaluate`](examples/typesafe-evaluate): text and structured state with all three question types.
 - [`examples/systemone-tool`](examples/systemone-tool): a Gemini-backed ADK agent calling an application-configured tool.
 - [`examples/bedrock-routing`](examples/bedrock-routing): Jev routing to Bedrock-backed ADK children, with confidence fallback.
 - [`examples/systemone-assessment`](examples/systemone-assessment): model and tool assessment callbacks.
-- [`examples/evaluation`](examples/evaluation): labelled cases and the evaluation CLI.
 
 ## Development
 
@@ -153,8 +144,6 @@ make check-generated test lint build check-examples
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution guidelines.
 
-Live contract tests are opt-in: run `make test-live` locally with `TYPESAFE_API_KEY` (and optionally `TYPESAFE_MODEL`). They evaluate all three question types against text and structured state.
-
 `make generate` uses a pinned generator and loads [TypeSafe's OpenAPI definition](https://api.typesafe.ai/openapi.json) directly. CI checks that the committed generated types match the live definition. Normal builds use those committed types; generation tools and schema downloads are not required by library consumers. See [api](api) for details.
 
 ## Repository layout
@@ -163,8 +152,6 @@ Live contract tests are opt-in: run `make test-live` locally with `TYPESAFE_API_
 - [`tools/systemone`](tools/systemone): ADK tools for System One evaluations.
 - [`agent/systemone`](agent/systemone): classification and routing agents.
 - [`callbacks/systemone`](callbacks/systemone): model and tool assessment callbacks.
-- [`evaluation`](evaluation): labelled routing evaluation and report metrics.
-- [`cmd/typesafe-eval`](cmd/typesafe-eval): evaluation CLI.
 - [`internal/mappers`](internal/mappers): request and response conversions.
 - [`internal/typesafe`](internal/typesafe): generated API wire types.
 - [`api`](api): generation configuration and Go type overlays.

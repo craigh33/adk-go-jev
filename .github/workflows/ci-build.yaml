@@ -28,9 +28,6 @@ jobs:
       - name: Unit tests
         run: go test -race ./... -count=1
 
-      - name: Compile opt-in live tests
-        run: go test -tags=integration ./typesafe -run '^$'
-
       - name: Bedrock example tests
         working-directory: examples/bedrock-routing
         run: go test ./...

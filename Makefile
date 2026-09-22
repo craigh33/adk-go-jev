@@ -1,4 +1,4 @@
-.PHONY: pre-commit-install pre-commit test test-live build lint check-examples generate check-generated
+.PHONY: pre-commit-install pre-commit test build lint check-examples generate check-generated
 
 # Install pre-commit hooks (requires pre-commit to be installed).
 pre-commit-install:
@@ -13,10 +13,6 @@ pre-commit:
 # Run unit tests for all packages.
 test:
 	go test ./... -count=1
-
-# Opt-in calls to the real API; requires TYPESAFE_API_KEY.
-test-live:
-	go test -tags=integration ./typesafe -run '^TestLiveSystemOne$$' -count=1 -v
 
 check-examples:
 	$(MAKE) -C examples/bedrock-routing test build lint

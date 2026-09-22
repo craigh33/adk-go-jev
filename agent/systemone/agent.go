@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"iter"
 	"maps"
+	"math"
 	"slices"
 	"strings"
 
@@ -15,7 +16,6 @@ import (
 	"google.golang.org/genai"
 
 	"github.com/craigh33/adk-go-typesafe/internal/mappers"
-	"github.com/craigh33/adk-go-typesafe/internal/routing"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
@@ -126,12 +126,18 @@ func (cfg Config) evaluate(ctx agent.InvocationContext) (*typesafe.Response, err
 }
 
 func (r *Routing) selectAgent(response *typesafe.Response, record map[string]any) (agent.Agent, error) {
-	answer, confident, err := routing.Choice(response, r.Question, r.MinConfidence)
-	if err != nil {
+	if response == nil {
+		return nil, errors.New("API returned a nil response")
+	}
+	answer, ok := response.Answers[r.Question].(typesafe.ChoiceAnswer)
+	if !ok {
+		return nil, fmt.Errorf("answer %q must be a ChoiceAnswer", r.Question)
+	}
+	if err := validateConfidence(answer.Confidence); err != nil {
 		return nil, err
 	}
 	selected := r.Routes[answer.Choice]
-	fallback := !confident || selected == nil
+	fallback := answer.Confidence < r.MinConfidence || selected == nil
 	if fallback {
 		selected = r.Fallback
 	}
@@ -139,6 +145,13 @@ func (r *Routing) selectAgent(response *typesafe.Response, record map[string]any
 		"agent": selected.Name(), "fallback": fallback, "choice": answer.Choice, "confidence": answer.Confidence,
 	}
 	return selected, nil
+}
+
+func validateConfidence(value float64) error {
+	if math.IsNaN(value) || value < 0 || value > 1 {
+		return errors.New("confidence must be between zero and one")
+	}
+	return nil
 }
 
 func userText(ctx agent.InvocationContext) (any, error) {
@@ -161,7 +174,7 @@ func userText(ctx agent.InvocationContext) (any, error) {
 
 func routingAgents(cfg Config) ([]agent.Agent, error) {
 	route := cfg.Routing
-	if err := routing.ValidateThreshold(route.MinConfidence); err != nil {
+	if err := validateConfidence(route.MinConfidence); err != nil {
 		return nil, err
 	}
 	var criteria map[string]any

@@ -17,6 +17,6 @@ go run . 'I was charged twice'
 
 AWS credentials use the default SDK chain. The configured identity needs permission to invoke the selected Bedrock model. This makes live TypeSafe and Bedrock calls, which may incur charges.
 
-The example prints the classifier assessment followed by the selected agent's response. Confidence below `0.75` selects the clarification agent. API failures stop the run. Calibrate the illustrative threshold against your own labelled cases using [the evaluation harness](../evaluation).
+The example prints the classifier assessment followed by the selected agent's response. Confidence below `0.75` selects the clarification agent. API failures stop the run. Choose a confidence threshold appropriate to your application.
 
 This example has a separate Go module, pinned to `adk-go-bedrock v1.7.7`; its local replacement uses the current checkout of `adk-go-typesafe`. AWS dependencies do not enter the library's module. Run `make check-examples` from the repository root to compile and test it without credentials.
