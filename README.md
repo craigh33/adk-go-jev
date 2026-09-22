@@ -98,7 +98,7 @@ make check-generated test lint build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution guidelines.
 
-`make generate` uses a pinned generator and the checked-in [OpenAPI snapshot](api). CI checks that generated types are current. Generation tools are not required by library consumers.
+`make generate` uses a pinned generator and loads [TypeSafe's OpenAPI definition](https://api.typesafe.ai/openapi.json) directly. CI checks that the committed generated types match the live definition. Normal builds use those committed types; generation tools and schema downloads are not required by library consumers. See [api](api) for details.
 
 ## Repository layout
 
@@ -106,7 +106,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution gu
 - [`tools/systemone`](tools/systemone): ADK tools for System One evaluations.
 - [`internal/mappers`](internal/mappers): request and response conversions.
 - [`internal/typesafe`](internal/typesafe): generated API wire types.
-- [`api`](api): upstream OpenAPI snapshot and generation configuration.
+- [`api`](api): generation configuration and Go type overlays.
 - [`examples`](examples): runnable direct-client and ADK examples.
 
 ## Kudos

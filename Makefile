@@ -23,7 +23,7 @@ lint:
 	golangci-lint run ./...
 
 generate:
-	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 --config api/oapi-codegen.yaml api/openapi.json
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 --config api/oapi-codegen.yaml https://api.typesafe.ai/openapi.json
 
 check-generated: generate
 	git diff --exit-code -- internal/typesafe/types.gen.go

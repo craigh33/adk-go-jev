@@ -34,8 +34,8 @@ The root [`Makefile`](Makefile) defines these targets:
 | `make test` | Run unit tests (`go test ./... -count=1`) |
 | `make build` | Compile all packages (`go build ./...`) |
 | `make lint` | Run `golangci-lint run ./...` (see [.golangci.yaml](.golangci.yaml)) |
-| `make generate` | Regenerate API types from the committed TypeSafe schema |
-| `make check-generated` | Verify generated types match the committed schema |
+| `make generate` | Regenerate API types from TypeSafe's live OpenAPI definition (requires network access) |
+| `make check-generated` | Verify generated types match the live definition (requires network access) |
 | `make pre-commit-install` | Install `pre-commit` and `commit-msg` hooks (same as `make pre-commit`; tries `brew install pre-commit` if the binary is missing) |
 
 Before you push, run pre-commit plus the test, lint, and build checks:
