@@ -21,7 +21,10 @@ func main() {
 func run() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	client, err := typesafe.New(nil)
+	client, err := typesafe.New(&typesafe.Options{
+		APIKey:  os.Getenv("TYPESAFE_API_KEY"),
+		BaseURL: os.Getenv("TYPESAFE_BASE_URL"),
+	})
 	if err != nil {
 		return err
 	}

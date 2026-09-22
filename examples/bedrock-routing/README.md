@@ -4,6 +4,7 @@ Jev classifies the ticket, then a Bedrock-backed ADK agent handles billing, tech
 
 ```bash
 export TYPESAFE_API_KEY='...'
+export TYPESAFE_BASE_URL='https://api.typesafe.ai'
 export AWS_PROFILE='your-profile'
 export AWS_REGION='your-region'
 export BEDROCK_MODEL_ID='your-model-or-inference-profile'
@@ -11,6 +12,8 @@ export BEDROCK_MODEL_ID='your-model-or-inference-profile'
 cd examples/bedrock-routing
 go run . 'I was charged twice'
 ```
+
+`TYPESAFE_BASE_URL` is optional and defaults to `https://api.typesafe.ai`. Use the API root, without `/v1/systemone`.
 
 AWS credentials use the default SDK chain. The configured identity needs permission to invoke the selected Bedrock model. This makes live TypeSafe and Bedrock calls, which may incur charges.
 

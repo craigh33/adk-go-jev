@@ -38,7 +38,12 @@ func run() error {
 	if os.Getenv("BEDROCK_MODEL_ID") == "" {
 		return errors.New("set BEDROCK_MODEL_ID to an accessible model or inference profile")
 	}
-	client, err := typesafe.New(&typesafe.Options{Model: os.Getenv("TYPESAFE_MODEL"), Retry: &typesafe.RetryPolicy{}})
+	client, err := typesafe.New(&typesafe.Options{
+		APIKey:  os.Getenv("TYPESAFE_API_KEY"),
+		BaseURL: os.Getenv("TYPESAFE_BASE_URL"),
+		Model:   os.Getenv("TYPESAFE_MODEL"),
+		Retry:   &typesafe.RetryPolicy{},
+	})
 	if err != nil {
 		return err
 	}

@@ -4,9 +4,12 @@ Run labelled Choice cases against TypeSafe and compare models or thresholds:
 
 ```bash
 export TYPESAFE_API_KEY='...'
+export TYPESAFE_BASE_URL='https://api.typesafe.ai'
 go run ./cmd/typesafe-eval -dataset examples/evaluation/tickets.json > report.json
 go run ./cmd/typesafe-eval -dataset examples/evaluation/tickets.json -min-confidence 0.85 > stricter-report.json
 ```
+
+`TYPESAFE_BASE_URL` is optional and defaults to `https://api.typesafe.ai`. Use the API root, without `/v1/systemone`.
 
 Use `-model` to select a supported TypeSafe model and `-timeout` to change the five-minute total deadline. These commands make billable live API calls; retries are disabled by default. The three sample cases are illustrative, not a validated accuracy baseline.
 

@@ -34,7 +34,11 @@ func run() error {
 	if os.Getenv("GEMINI_MODEL") == "" || os.Getenv("GOOGLE_API_KEY") == "" {
 		return errors.New("set GEMINI_MODEL and GOOGLE_API_KEY")
 	}
-	client, err := typesafe.New(&typesafe.Options{Model: os.Getenv("TYPESAFE_MODEL")})
+	client, err := typesafe.New(&typesafe.Options{
+		APIKey:  os.Getenv("TYPESAFE_API_KEY"),
+		BaseURL: os.Getenv("TYPESAFE_BASE_URL"),
+		Model:   os.Getenv("TYPESAFE_MODEL"),
+	})
 	if err != nil {
 		return err
 	}

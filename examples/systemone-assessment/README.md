@@ -4,10 +4,13 @@ A Gemini-backed ADK agent assesses model input, model output, and proposed tool 
 
 ```bash
 export TYPESAFE_API_KEY='...'
+export TYPESAFE_BASE_URL='https://api.typesafe.ai'
 export GOOGLE_API_KEY='...'
 export GEMINI_MODEL='your-supported-model'
 go run ./examples/systemone-assessment 'Draft a support ticket about a duplicate charge'
 ```
+
+`TYPESAFE_BASE_URL` is optional and defaults to `https://api.typesafe.ai`. Use the API root, without `/v1/systemone`.
 
 The tool only returns a draft; it does not submit tickets. Use invented content when trying the example: assessments send the configured messages, outputs, and tool arguments to TypeSafe. API, policy, and state-storage errors stop execution.
 
