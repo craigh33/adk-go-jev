@@ -34,6 +34,13 @@ type Options struct {
 	// HTTPClient overrides the default transport and timeout. Redirects are
 	// disabled unless this client supplies its own CheckRedirect policy.
 	HTTPClient *http.Client
+	// Retry enables bounded retries for HTTP 429 and 529. Nil disables retries.
+	Retry *RetryPolicy
+}
+
+// Evaluator is the evaluation boundary used by ADK adapters.
+type Evaluator interface {
+	Evaluate(context.Context, *Request) (*Response, error)
 }
 
 // Client calls TypeSafe's System One API. It is safe for concurrent use.
@@ -43,6 +50,7 @@ type Client struct {
 	model    string
 	endpoint string
 	http     *http.Client
+	retry    RetryPolicy
 }
 
 // New creates a client. A nil options pointer uses the defaults.
@@ -81,9 +89,13 @@ func New(opts *Options) (*Client, error) {
 	if client.CheckRedirect == nil {
 		client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
 	}
+	retry, err := retryPolicy(cfg.Retry)
+	if err != nil {
+		return nil, err
+	}
 	return &Client{
 		apiKey: cfg.APIKey, model: cfg.Model,
-		endpoint: base.JoinPath("v1", "systemone").String(), http: &client,
+		endpoint: base.JoinPath("v1", "systemone").String(), http: &client, retry: retry,
 	}, nil
 }
 
@@ -101,8 +113,8 @@ func (e *APIError) Error() string {
 }
 
 // Evaluate submits one request. It preserves probabilities, confidence, rubric
-// legends, model identity, and usage. Requests are not automatically retried;
-// callers can inspect APIError and choose a retry policy for 429/529 responses.
+// legends, model identity, and usage. Retries are disabled unless Options.Retry
+// is configured. Context cancellation covers HTTP calls and retry delays.
 // Responses larger than 8 MiB are rejected.
 func (c *Client) Evaluate(ctx context.Context, req *Request) (*Response, error) {
 	if err := req.Validate(); err != nil {
@@ -116,6 +128,21 @@ func (c *Client) Evaluate(ctx context.Context, req *Request) (*Response, error) 
 	if err != nil {
 		return nil, fmt.Errorf("typesafe: encode request: %w", err)
 	}
+	data, err := c.sendWithRetry(ctx, body)
+	if err != nil {
+		return nil, err
+	}
+	var response Response
+	if err := json.Unmarshal(data, &response); err != nil {
+		return nil, fmt.Errorf("typesafe: decode response: %w", err)
+	}
+	if err := validateAnswers(&input, &response); err != nil {
+		return nil, fmt.Errorf("typesafe: invalid response: %w", err)
+	}
+	return &response, nil
+}
+
+func (c *Client) send(ctx context.Context, body []byte) ([]byte, error) {
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("typesafe: create request: %w", err)
@@ -138,12 +165,5 @@ func (c *Client) Evaluate(ctx context.Context, req *Request) (*Response, error) 
 	if res.StatusCode != http.StatusOK {
 		return nil, &APIError{StatusCode: res.StatusCode, Body: string(data), RetryAfter: res.Header.Get("Retry-After")}
 	}
-	var response Response
-	if err := json.Unmarshal(data, &response); err != nil {
-		return nil, fmt.Errorf("typesafe: decode response: %w", err)
-	}
-	if err := validateAnswers(&input, &response); err != nil {
-		return nil, fmt.Errorf("typesafe: invalid response: %w", err)
-	}
-	return &response, nil
+	return data, nil
 }
