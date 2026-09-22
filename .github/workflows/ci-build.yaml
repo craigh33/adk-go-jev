@@ -16,6 +16,9 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Check generated API types
+        run: make check-generated
+
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
