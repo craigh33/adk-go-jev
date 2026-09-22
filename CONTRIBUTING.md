@@ -32,7 +32,6 @@ The root [`Makefile`](Makefile) defines these targets:
 | Target | Description |
 |--------|-------------|
 | `make test` | Run unit tests (`go test ./... -count=1`) |
-| `make check-examples` | Test, build, and lint the separate Bedrock example module |
 | `make build` | Compile all packages (`go build ./...`) |
 | `make lint` | Run `golangci-lint run ./...` (see [.golangci.yaml](.golangci.yaml)) |
 | `make generate` | Regenerate API types from TypeSafe's live OpenAPI definition (requires network access) |
@@ -43,10 +42,10 @@ Before you push, run pre-commit plus the test, lint, and build checks:
 
 ```bash
 pre-commit run --show-diff-on-failure --color always --all-files
-make test lint build check-examples
+make test lint build
 ```
 
-The [CI workflow](.github/workflows/ci-build.yaml) checks generated types, runs lint and race-enabled unit tests, and checks the separate Bedrock example module.
+The [CI workflow](.github/workflows/ci-build.yaml) checks generated types, runs lint and unit tests.
 
 For API schema updates, follow [api/README.md](api/README.md). Do not edit generated files directly.
 

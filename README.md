@@ -139,7 +139,7 @@ git clone https://github.com/craigh33/adk-go-typesafe.git
 cd adk-go-typesafe
 git switch -c feat/your-change
 make pre-commit-install
-make check-generated test lint build check-examples
+make check-generated test lint build
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution guidelines.

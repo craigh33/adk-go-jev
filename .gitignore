@@ -32,7 +32,6 @@ go.work.sum
 # .vscode/
 # Added by goreleaser init:
 dist/
-/examples/bedrock-routing/bedrock-routing
 
 .DS_Store
 *.DS_Store

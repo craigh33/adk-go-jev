@@ -1,13 +1,4 @@
-.PHONY: run test build lint
+.PHONY: run
 
 run:
-	go run .
-
-test:
-	go test ./...
-
-build:
-	go build ./...
-
-lint:
-	golangci-lint run --config ../../.golangci.yaml ./...
+	go run . $(PROMPT)

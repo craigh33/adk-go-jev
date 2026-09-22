@@ -40,12 +40,6 @@ repos:
 
   - repo: local
     hooks:
-      - id: bedrock-example-lint
-        name: Bedrock example lint
-        entry: make -C examples/bedrock-routing lint
-        language: system
-        pass_filenames: false
-        files: ^examples/bedrock-routing/.*\.(go|mod|sum)$
       - id: gitleaks
         name: gitleaks (staged diff scan)
         entry: gitleaks git . --staged --redact

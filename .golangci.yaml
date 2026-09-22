@@ -471,9 +471,6 @@ linters:
       - common-false-positives
     # Excluding configuration per-path, per-linter, per-text and per-source.
     rules:
-      # The standalone example intentionally uses the library checkout under test.
-      - path: (^|/)examples/bedrock-routing/go.mod$
-        linters: [ gomoddirectives ]
       - source: 'TODO'
         linters: [ godot ]
       - text: 'should have a package comment'
