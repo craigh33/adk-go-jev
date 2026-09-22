@@ -153,7 +153,7 @@ make check-generated test lint build check-examples
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution guidelines.
 
-Live contract tests are opt-in: run `make test-live` with `TYPESAFE_API_KEY` (and optionally `TYPESAFE_MODEL`). They evaluate all three question types against text and structured state. The manual **Live TypeSafe tests** workflow uses a repository secret named `TYPESAFE_API_KEY`; normal pull-request CI makes no authenticated inference calls.
+Live contract tests are opt-in: run `make test-live` locally with `TYPESAFE_API_KEY` (and optionally `TYPESAFE_MODEL`). They evaluate all three question types against text and structured state.
 
 `make generate` uses a pinned generator and loads [TypeSafe's OpenAPI definition](https://api.typesafe.ai/openapi.json) directly. CI checks that the committed generated types match the live definition. Normal builds use those committed types; generation tools and schema downloads are not required by library consumers. See [api](api) for details.
 

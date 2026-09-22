@@ -47,7 +47,7 @@ pre-commit run --show-diff-on-failure --color always --all-files
 make test lint build check-examples
 ```
 
-The [CI workflow](.github/workflows/ci-build.yaml) checks generated types, runs lint and race-enabled tests, compiles live tests without executing them, and checks the separate Bedrock example module. The [live test workflow](.github/workflows/live-test.yaml) runs only when manually dispatched and requires the `TYPESAFE_API_KEY` repository secret.
+The [CI workflow](.github/workflows/ci-build.yaml) checks generated types, runs lint and race-enabled tests, compiles live tests without executing them, and checks the separate Bedrock example module.
 
 For API schema updates, follow [api/README.md](api/README.md). Do not edit generated files directly.
 
