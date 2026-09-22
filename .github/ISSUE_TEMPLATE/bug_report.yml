@@ -29,7 +29,7 @@ body:
     id: repro
     attributes:
       label: Steps to reproduce
-      description: Code snippet, CLI commands, Jev model ID if relevant (redact secrets).
+      description: Code snippet, CLI commands, TypeSafe model ID if relevant (redact secrets).
       placeholder: |
         1. …
         2. …
@@ -39,7 +39,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Go version (`go version`), module version or commit, Jev model ID if relevant.
+      description: OS, Go version (`go version`), module version or commit, TypeSafe model ID if relevant.
       render: markdown
     validations:
       required: false

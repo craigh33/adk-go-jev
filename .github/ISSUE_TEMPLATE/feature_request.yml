@@ -31,6 +31,6 @@ body:
     id: scope
     attributes:
       label: Scope / compatibility notes
-      description: Jev models or question types involved, breaking-change concerns, links to TypeSafe or ADK docs if helpful.
+      description: TypeSafe models or question types involved, breaking-change concerns, links to TypeSafe or ADK docs if helpful.
     validations:
       required: false

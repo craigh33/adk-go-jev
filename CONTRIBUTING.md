@@ -5,7 +5,7 @@ Thank you for investing time in this project. Contributions are welcome through 
 ## Before you start
 
 - Review [README.md](README.md) for scope, requirements, and usage.
-- Search [existing issues](https://github.com/craigh33/adk-go-jev/issues) and pull requests for duplicates.
+- Search [existing issues](https://github.com/craigh33/adk-go-typesafe/issues) and pull requests for duplicates.
 - Prefer small, focused changes—one logical concern per PR keeps review straightforward.
 
 ## Development setup
@@ -82,7 +82,7 @@ If a hook fails, fix or auto-fix, then commit again.
 
 ## Security
 
-If you find a security vulnerability, please **do not** open a public issue. Use [GitHub Security Advisories](https://github.com/craigh33/adk-go-jev/security/advisories) for this repository if available, or contact the maintainers privately with enough detail to reproduce and assess impact.
+If you find a security vulnerability, please **do not** open a public issue. Use [GitHub Security Advisories](https://github.com/craigh33/adk-go-typesafe/security/advisories) for this repository if available, or contact the maintainers privately with enough detail to reproduce and assess impact.
 
 ## Code of conduct
 
