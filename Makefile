@@ -1,4 +1,4 @@
-.PHONY: pre-commit-install pre-commit test build lint
+.PHONY: pre-commit-install pre-commit test build lint generate check-generated
 
 # Install pre-commit hooks (requires pre-commit to be installed).
 pre-commit-install:
@@ -21,3 +21,9 @@ build:
 # Run golangci-lint (see .golangci.yaml).
 lint:
 	golangci-lint run ./...
+
+generate:
+	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.8.0 --config api/oapi-codegen.yaml api/openapi.json
+
+check-generated: generate
+	git diff --exit-code -- internal/typesafe/types.gen.go

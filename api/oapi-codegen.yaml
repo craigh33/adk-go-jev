@@ -1,0 +1,11 @@
+package: typesafe
+output: internal/typesafe/types.gen.go
+generate:
+  models: true
+output-options:
+  overlay:
+    path: api/overlay.yaml
+  type-mapping:
+    number:
+      default:
+        type: float64

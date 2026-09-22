@@ -34,6 +34,8 @@ The root [`Makefile`](Makefile) defines these targets:
 | `make test` | Run unit tests (`go test ./... -count=1`) |
 | `make build` | Compile all packages (`go build ./...`) |
 | `make lint` | Run `golangci-lint run ./...` (see [.golangci.yaml](.golangci.yaml)) |
+| `make generate` | Regenerate API types from the committed TypeSafe schema |
+| `make check-generated` | Verify generated types match the committed schema |
 | `make pre-commit-install` | Install `pre-commit` and `commit-msg` hooks (same as `make pre-commit`; tries `brew install pre-commit` if the binary is missing) |
 
 Before you push, run pre-commit plus the test, lint, and build checks:
@@ -43,7 +45,9 @@ pre-commit run --show-diff-on-failure --color always --all-files
 make test lint build
 ```
 
-The [CI workflow](.github/workflows/ci-build.yaml) runs lint and unit tests.
+The [CI workflow](.github/workflows/ci-build.yaml) checks generated types, runs lint and unit tests.
+
+For API schema updates, follow [api/README.md](api/README.md). Do not edit generated files directly.
 
 ## Pre-commit (required)
 

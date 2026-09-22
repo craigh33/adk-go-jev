@@ -1,2 +1,2 @@
-// Package mappers is reserved for TypeSafe request and response conversions.
+// Package mappers converts Jev responses to ADK tool results.
 package mappers
