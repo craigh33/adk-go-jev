@@ -36,12 +36,14 @@ The root [`Makefile`](Makefile) defines these targets:
 | `make lint` | Run `golangci-lint run ./...` (see [.golangci.yaml](.golangci.yaml)) |
 | `make pre-commit-install` | Install `pre-commit` and `commit-msg` hooks (same as `make pre-commit`; tries `brew install pre-commit` if the binary is missing) |
 
-Before you push, run pre-commit plus the same Makefile targets CI uses ([workflow](.github/workflows/ci-build.yaml)):
+Before you push, run pre-commit plus the test, lint, and build checks:
 
 ```bash
 pre-commit run --show-diff-on-failure --color always --all-files
 make test lint build
 ```
+
+The [CI workflow](.github/workflows/ci-build.yaml) runs lint and unit tests.
 
 ## Pre-commit (required)
 
