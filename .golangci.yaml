@@ -44,7 +44,7 @@ formatters:
       # with the given prefixes are grouped after 3rd-party packages.
       # Default: []
       local-prefixes:
-        - github.com/craigh33/adk-go-jev
+        - github.com/craigh33/adk-go-typesafe
 
     golines:
       # Target maximum line length.
