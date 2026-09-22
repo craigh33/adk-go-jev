@@ -6,7 +6,7 @@ require (
 	github.com/craigh33/adk-go-bedrock v1.7.7
 	github.com/craigh33/adk-go-typesafe v0.1.0
 	google.golang.org/adk/v2 v2.4.0
-	google.golang.org/genai v1.70.0
+	google.golang.org/genai v1.71.0
 )
 
 require (
@@ -43,7 +43,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.20 // indirect
 	github.com/googleapis/gax-go/v2 v2.24.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	github.com/oapi-codegen/runtime v1.6.0 // indirect
+	github.com/oapi-codegen/runtime v1.7.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.70.0 // indirect
 	go.opentelemetry.io/otel v1.46.0 // indirect
