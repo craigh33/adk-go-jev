@@ -26,4 +26,18 @@ jobs:
           args: --timeout=5m
 
       - name: Unit tests
-        run: go test ./... -count=1
+        run: go test -race ./... -count=1
+
+      - name: Compile opt-in live tests
+        run: go test -tags=integration ./typesafe -run '^$'
+
+      - name: Bedrock example tests
+        working-directory: examples/bedrock-routing
+        run: go test ./...
+
+      - name: Bedrock example lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.2
+          working-directory: examples/bedrock-routing
+          args: --config ../../.golangci.yaml --timeout=5m

@@ -1,0 +1,15 @@
+{
+  "question": {
+    "instructions": "Which team should handle this support request?",
+    "criteria": {
+      "billing": "Payments, invoices and refunds",
+      "technical": "Bugs, outages and integrations"
+    }
+  },
+  "min_confidence": 0.75,
+  "cases": [
+    {"name": "duplicate-charge", "state": "I was charged twice. Please refund the duplicate payment.", "expected_choice": "billing"},
+    {"name": "broken-integration", "state": {"message": "Our integration returns HTTP 500 on every request", "attempts": 3}, "expected_choice": "technical"},
+    {"name": "ambiguous-request", "state": "Something is wrong with my account. Can someone help?", "expected_fallback": true}
+  ]
+}

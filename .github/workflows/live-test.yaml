@@ -1,0 +1,30 @@
+name: Live TypeSafe tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: TypeSafe model ID
+        default: jev-latest
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+
+      - name: Evaluate text and structured state
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          TYPESAFE_MODEL: ${{ inputs.model }}
+        run: make test-live

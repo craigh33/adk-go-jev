@@ -1,7 +1,6 @@
 package systemone
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -16,9 +15,7 @@ import (
 )
 
 // EvaluationAPI is the portion of the TypeSafe client used by the tool.
-type EvaluationAPI interface {
-	Evaluate(context.Context, *typesafe.Request) (*typesafe.Response, error)
-}
+type EvaluationAPI = typesafe.Evaluator
 
 // Config defines an ADK evaluation tool. Questions and rubrics are set by the
 // application; the calling model supplies only the state to evaluate.
