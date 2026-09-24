@@ -59,6 +59,10 @@ func New(cfg Config) (tool.Tool, error) {
 		if err != nil {
 			return nil, fmt.Errorf("systemone tool: evaluate: %w", err)
 		}
-		return mappers.ResponseMap(response)
+		record, err := mappers.ResponseMap(response)
+		if err != nil {
+			return nil, fmt.Errorf("systemone tool: map assessment: %w", err)
+		}
+		return record, nil
 	})
 }

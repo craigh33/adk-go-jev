@@ -162,3 +162,20 @@ func TestCompactionSummaryIsProtected(t *testing.T) {
 		t.Fatalf("report=%+v err=%v", report, err)
 	}
 }
+
+func TestMissingSessionEvents(t *testing.T) {
+	t.Parallel()
+	api := evaluatorFunc(func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
+		return scores(req), nil
+	})
+	for _, sess := range []session.Session{nil, stubSession{}, stubSession{events: stubEvents{}}} {
+		current := user("Current")
+		request := &model.LLMRequest{Contents: []*genai.Content{user("Old"), reply("Done"), current}}
+		ctx := callbackContext{parent: t.Context(), input: current, sess: sess}
+		report, err := apply(t, testConfig(api), ctx, request)
+		if err != nil || report.Err != nil || report.RemovedTurns != 1 ||
+			!slices.Equal(request.Contents, []*genai.Content{current}) {
+			t.Fatalf("missing or empty event list: report=%+v err=%v", report, err)
+		}
+	}
+}

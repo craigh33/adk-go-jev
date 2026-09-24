@@ -86,7 +86,7 @@ func (cfg Config) run(ctx agent.InvocationContext) iter.Seq2[*session.Event, err
 		}
 		record, err := mappers.ResponseMap(response)
 		if err != nil {
-			yield(nil, err)
+			yield(nil, fmt.Errorf("systemone agent: map assessment: %w", err))
 			return
 		}
 		var selected agent.Agent

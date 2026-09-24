@@ -3,6 +3,7 @@ package contextfilter
 import (
 	"reflect"
 	"slices"
+	"strings"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
@@ -13,8 +14,12 @@ import (
 
 func (p *contextFilter) newConversation(ctx agent.Context, request *model.LLMRequest) conversation {
 	c := conversation{contents: request.Contents}
-	current := mappers.ContentText(ctx.UserContent())
-	if current.Incomplete || !isConversationContent(ctx.UserContent()) {
+	input := ctx.UserContent()
+	current := mappers.ContentText(input)
+	if current.Incomplete || !isConversationContent(input) ||
+		!slices.ContainsFunc(input.Parts, func(part *genai.Part) bool {
+			return part != nil && !part.Thought && strings.TrimSpace(part.Text) != ""
+		}) {
 		return c
 	}
 	c.latestRequest = current.Text
@@ -27,7 +32,7 @@ func (p *contextFilter) newConversation(ctx agent.Context, request *model.LLMReq
 	}
 	active := -1
 	for i, content := range c.contents {
-		if content != nil && reflect.DeepEqual(content, ctx.UserContent()) {
+		if content != nil && reflect.DeepEqual(content, input) {
 			active = i
 		}
 	}
@@ -56,16 +61,22 @@ func (p *contextFilter) newConversation(ctx agent.Context, request *model.LLMReq
 }
 
 func (c *conversation) protectSummaries(ctx agent.Context) {
+	sess := ctx.Session()
+	if sess == nil {
+		return
+	}
+	events := sess.Events()
+	if events == nil {
+		return
+	}
 	texts := make(map[string]bool)
-	if ctx.Session() != nil {
-		for event := range ctx.Session().Events().All() {
-			if event == nil || event.Actions.Compaction == nil || event.Actions.Compaction.CompactedContent == nil {
-				continue
-			}
-			for _, part := range event.Actions.Compaction.CompactedContent.Parts {
-				if part != nil && part.Text != "" {
-					texts[part.Text] = true
-				}
+	for event := range events.All() {
+		if event == nil || event.Actions.Compaction == nil || event.Actions.Compaction.CompactedContent == nil {
+			continue
+		}
+		for _, part := range event.Actions.Compaction.CompactedContent.Parts {
+			if part != nil && part.Text != "" {
+				texts[part.Text] = true
 			}
 		}
 	}

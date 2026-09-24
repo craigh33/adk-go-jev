@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
+	"strings"
 	"testing"
 
 	"google.golang.org/adk/v2/agent"
@@ -117,8 +119,10 @@ func TestToolErrors(t *testing.T) {
 		t.Fatal("empty questions accepted")
 	}
 	failure := errors.New("evaluation failed")
-	for _, upstreamError := range []error{failure, nil} {
-		api := &fakeAPI{err: upstreamError}
+	for _, api := range []*fakeAPI{
+		{err: failure}, {},
+		{response: &typesafe.Response{Answers: map[string]typesafe.Answer{"a": typesafe.NoulAnswer{Noul: math.NaN()}}}},
+	} {
 		value, err := New(
 			Config{API: api, Questions: map[string]typesafe.Question{"a": typesafe.Noul{Instructions: "Test?"}}},
 		)
@@ -131,8 +135,15 @@ func TestToolErrors(t *testing.T) {
 		}
 		ctx := &testContext{StrictContextMock: agent.StrictContextMock{Ctx: t.Context()}}
 		_, err = tool.Run(ctx, map[string]any{"state": "text"})
-		if err == nil || (upstreamError != nil && !errors.Is(err, failure)) {
+		if err == nil || (api.err != nil && !errors.Is(err, failure)) {
 			t.Fatalf("upstream error/nil response lost: %v", err)
+		}
+		if api.err == nil && !strings.Contains(err.Error(), "systemone tool: map assessment:") {
+			t.Fatalf("missing caller context: %v", err)
+		}
+		var cause *json.UnsupportedValueError
+		if api.response != nil && !errors.As(err, &cause) {
+			t.Fatalf("lost encoding error: %v", err)
 		}
 	}
 }

@@ -2,8 +2,10 @@ package systemone
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"iter"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -21,14 +23,18 @@ import (
 )
 
 type fakeAPI struct {
-	request *typesafe.Request
-	calls   int
-	err     error
+	request  *typesafe.Request
+	calls    int
+	response *typesafe.Response
+	err      error
 }
 
 func (f *fakeAPI) Evaluate(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
 	f.request = req
 	f.calls++
+	if f.response != nil {
+		return f.response, f.err
+	}
 	return &typesafe.Response{
 		Model:   "jev-test",
 		Answers: map[string]typesafe.Answer{"allowed": typesafe.NoulAnswer{Type: "noul", Noul: 0}},
@@ -297,5 +303,18 @@ func TestCallbackConfiguration(t *testing.T) {
 		if _, err := BeforeTool(cfg); err == nil {
 			t.Fatal("accepted invalid before-tool config")
 		}
+	}
+}
+
+func TestMappingErrorsIdentifyCallback(t *testing.T) {
+	t.Parallel()
+	api := &fakeAPI{response: &typesafe.Response{
+		Answers: map[string]typesafe.Answer{"allowed": typesafe.NoulAnswer{Noul: math.NaN()}},
+	}}
+	cfg := config(api, false)
+	_, err := cfg.assess(&agent.StrictContextMock{Ctx: t.Context()}, "Input")
+	var cause *json.UnsupportedValueError
+	if err == nil || !strings.Contains(err.Error(), "systemone callback: map assessment:") || !errors.As(err, &cause) {
+		t.Fatalf("lost caller context or encoding error: %v", err)
 	}
 }

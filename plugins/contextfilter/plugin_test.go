@@ -201,3 +201,25 @@ func TestConfig(t *testing.T) {
 		t.Fatalf("custom plugin name was not used: %v", err)
 	}
 }
+
+func TestSkipsTextlessCurrentInput(t *testing.T) {
+	t.Parallel()
+	api := evaluatorFunc(func(context.Context, *typesafe.Request) (*typesafe.Response, error) {
+		t.Fatal("textless current input must not trigger evaluation")
+		return nil, errors.New("unexpected call")
+	})
+	for _, input := range []*genai.Content{
+		nil, {Role: genai.RoleUser}, user(""), user(" \t\n"),
+		{Role: genai.RoleUser, Parts: []*genai.Part{nil}},
+		{Role: genai.RoleUser, Parts: []*genai.Part{{Thought: true, Text: "Hidden reasoning"}}},
+		result("a"),
+	} {
+		contents := []*genai.Content{user("Old request"), reply("Done"), input}
+		request := &model.LLMRequest{Contents: contents}
+		report, err := apply(t, testConfig(api), callbackContext{parent: t.Context(), input: input}, request)
+		if err != nil || report.Err != nil || len(report.Decisions) != 0 ||
+			!reflect.DeepEqual(request.Contents, contents) {
+			t.Fatalf("textless input changed history: input=%+v report=%+v err=%v", input, report, err)
+		}
+	}
+}
