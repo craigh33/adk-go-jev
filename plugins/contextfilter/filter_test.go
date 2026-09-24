@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"math"
+	"net/http"
 	"reflect"
 	"slices"
 	"strconv"
@@ -18,6 +20,10 @@ import (
 
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) { return f(request) }
 
 func batchContents() []*genai.Content {
 	return []*genai.Content{
@@ -92,39 +98,69 @@ func TestBatchesPreserveEvidenceAndOrder(t *testing.T) {
 	}
 }
 
+//nolint:gocognit // Check the wire model and both sides of the byte limit for each model configuration.
 func TestExactRequestByteLimit(t *testing.T) {
 	t.Parallel()
-	contents := []*genai.Content{user(`A "quoted" λ request`), reply("Done"), user("Current")}
-	current := contents[2]
-	size, calls := 0, 0
-	api := evaluatorFunc(func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
-		data, err := json.Marshal(req)
-		if err != nil {
-			t.Fatal(err)
-		}
-		size = len(data)
-		calls++
-		return scores(req), nil
-	})
-	cfg := testConfig(api)
-	request := &model.LLMRequest{Contents: contents}
-	if _, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request); err != nil {
-		t.Fatal(err)
-	}
-	for _, limit := range []int{size, size - 1} {
-		cfg.MaxRequestBytes, calls = limit, 0
-		request.Contents = contents
-		report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if limit == size {
-			if calls != 1 || report.Err != nil || report.RemovedTurns != 1 {
-				t.Fatalf("exact limit rejected: calls=%d report=%+v", calls, report)
+	for _, tc := range []struct{ name, clientModel, pluginModel, wantModel string }{
+		{name: "default", wantModel: typesafe.DefaultModel},
+		{name: "client default", clientModel: "jev-client", wantModel: typesafe.DefaultModel},
+		{name: "override", clientModel: "jev-client", pluginModel: `jev-"λ"`, wantModel: `jev-"λ"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			contents := []*genai.Content{user(`A "quoted" λ request`), reply("Done"), user("Current")}
+			current := contents[2]
+			size, calls := 0, 0
+			transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				defer req.Body.Close()
+				data, err := io.ReadAll(req.Body)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var body struct {
+					Model string `json:"model"`
+				}
+				if err := json.Unmarshal(data, &body); err != nil || body.Model != tc.wantModel {
+					t.Errorf("wire model=%q want=%q err=%v", body.Model, tc.wantModel, err)
+				}
+				size, calls = len(data), calls+1
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Body: io.NopCloser(
+						strings.NewReader(`{"model":"jev-test","answers":{"0":{"type":"noul","noul":0}},` +
+							`"usage":{"input_tokens":10,"output_tokens":0}}`),
+					),
+				}, nil
+			})
+			api, err := typesafe.New(&typesafe.Options{
+				APIKey: "test-key", Model: tc.clientModel, HTTPClient: &http.Client{Transport: transport},
+			})
+			if err != nil {
+				t.Fatal(err)
 			}
-		} else if calls != 0 || report.Err == nil || !slices.Equal(request.Contents, contents) {
-			t.Fatalf("over-limit turn was evaluated or removed: calls=%d report=%+v", calls, report)
-		}
+			cfg := testConfig(api)
+			cfg.Model = tc.pluginModel
+			request := &model.LLMRequest{Contents: contents}
+			report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request)
+			if err != nil || report.Err != nil || calls != 1 || report.RemovedTurns != 1 {
+				t.Fatalf("initial review: calls=%d report=%+v err=%v", calls, report, err)
+			}
+			for _, limit := range []int{size, size - 1} {
+				cfg.MaxRequestBytes, calls = limit, 0
+				request.Contents = contents
+				report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if limit == size {
+					if calls != 1 || report.Err != nil || report.RemovedTurns != 1 {
+						t.Fatalf("exact limit rejected: calls=%d report=%+v", calls, report)
+					}
+				} else if calls != 0 || report.Err == nil || !slices.Equal(request.Contents, contents) {
+					t.Fatalf("over-limit turn was evaluated or removed: calls=%d report=%+v", calls, report)
+				}
+			}
+		})
 	}
 }
 

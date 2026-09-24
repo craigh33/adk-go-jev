@@ -27,8 +27,10 @@ const (
 // concurrent use. Pin and OnReport must not mutate the supplied context messages.
 type Config struct {
 	// Name identifies the plugin in the runner. Empty selects "context_filter".
-	Name  string
-	API   typesafe.Evaluator
+	Name string
+	API  typesafe.Evaluator
+	// Model selects the review model. Empty selects typesafe.DefaultModel,
+	// independently of the client's default, so its encoded size is known before batching.
 	Model string
 	// RemovalThreshold removes turns with a relevance probability strictly below
 	// this value. Zero selects 0.1; valid explicit values are greater than 0 through 1.
@@ -62,6 +64,9 @@ func (cfg Config) configure() (Config, error) {
 	}
 	if cfg.Name == "" {
 		cfg.Name = "context_filter"
+	}
+	if cfg.Model == "" {
+		cfg.Model = typesafe.DefaultModel
 	}
 	if cfg.RemovalThreshold == 0 {
 		cfg.RemovalThreshold = 0.1

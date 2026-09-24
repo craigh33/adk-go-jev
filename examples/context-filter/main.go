@@ -38,13 +38,13 @@ func run(observe bool) error {
 	client, err := typesafe.New(&typesafe.Options{
 		APIKey:  os.Getenv("TYPESAFE_API_KEY"),
 		BaseURL: os.Getenv("TYPESAFE_BASE_URL"),
-		Model:   os.Getenv("TYPESAFE_MODEL"),
 	})
 	if err != nil {
 		return err
 	}
 	filter, err := contextfilter.New(contextfilter.Config{
 		API: client, Observe: observe, KeepRecentTurns: 1, MinBytes: 1,
+		Model: os.Getenv("TYPESAFE_MODEL"),
 		OnReport: func(_ agent.Context, report contextfilter.Report) {
 			for _, decision := range report.Decisions {
 				fmt.Printf("Messages [%d,%d): relevance=%.3f proposed removal=%t\n",

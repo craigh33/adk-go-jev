@@ -141,7 +141,7 @@ filter, err := contextfilter.New(contextfilter.Config{
 plugins := runner.PluginConfig{Plugins: []*plugin.Plugin{filter}}
 ```
 
-Set `Observe: false` to apply removals. Defaults protect two recent turns, skip histories below 8 KiB of projected text, and remove older turns only when relevance is below 0.1. `Pin` protects an application-selected message's entire turn. System instructions, compaction summaries, unsupported content, and incomplete or cross-turn tool pairs are retained. A non-text or unrecognizable current input skips review.
+Set `Observe: false` to apply removals. `Config.Model` defaults to `jev-latest` independently of the client's default; set it explicitly to use another model. Defaults protect two recent turns, skip histories below 8 KiB of projected text, and remove older turns only when relevance is below 0.1. `Pin` protects an application-selected message's entire turn. System instructions, compaction summaries, unsupported content, and incomplete or cross-turn tool pairs are retained. A non-text or unrecognizable current input skips review.
 
 Filtering selects original messages for the outgoing request without modifying saved history. Older turns can return when ADK supplies them again; filtering cannot restore originals already replaced by ADK compaction. ADK runs plugins before agent callbacks. Assessments that need the complete request must run in an earlier runner plugin.
 
