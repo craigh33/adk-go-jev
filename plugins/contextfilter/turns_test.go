@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"iter"
+	"math"
 	"reflect"
 	"slices"
 	"strings"
@@ -64,6 +65,10 @@ func TestProtectedGroups(t *testing.T) {
 		{"application pinned", []*genai.Content{user("Old"), reply("Keep this")}, true},
 		{"nil message", []*genai.Content{user("Old"), nil}, false},
 		{"nil part", []*genai.Content{user("Old"), {Role: genai.RoleModel, Parts: []*genai.Part{nil}}}, false},
+		{"invalid call with a result", []*genai.Content{user("Old"), {Role: genai.RoleModel, Parts: []*genai.Part{{
+			FunctionCall:     &genai.FunctionCall{ID: "a", Name: "lookup", Args: map[string]any{"value": math.NaN()}},
+			FunctionResponse: &genai.FunctionResponse{ID: "a", Name: "lookup", Response: map[string]any{"found": true}},
+		}}}}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -112,6 +117,52 @@ func TestRecentTurnsAndEmptyToolIDs(t *testing.T) {
 	report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request)
 	if err != nil || report.Err != nil || !reflect.DeepEqual(request.Contents, contents[3:]) {
 		t.Fatalf("report=%+v err=%v", report, err)
+	}
+}
+
+func TestRolelessTurnBoundaries(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ name, historyRole, currentRole string }{
+		{"explicit user roles", genai.RoleUser, genai.RoleUser},
+		{"roleless current input", genai.RoleUser, ""},
+		{"roleless history", "", genai.RoleUser},
+		{"all roleless", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			contents := []*genai.Content{
+				user("Old"), call("a"), result("a"), reply("Done"),
+				user("Recent"), reply("Noted"), user("Current"), call("b"), result("b"),
+			}
+			contents[0].Role, contents[4].Role, contents[6].Role = tc.historyRole, tc.historyRole, tc.currentRole
+			for _, i := range []int{1, 2, 7, 8} {
+				contents[i].Role = ""
+			}
+			before, _ := json.Marshal(contents)
+			calls := 0
+			api := evaluatorFunc(func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
+				calls++
+				state := req.State.(reviewState)
+				if len(req.Questions) != 1 || req.Questions["0"] == nil || len(state.Groups) != 3 ||
+					state.Groups[1].ID != "4" || state.Groups[2].ID != "6" ||
+					!state.Groups[1].Pinned || !state.Groups[2].Pinned {
+					t.Fatalf("incorrect user or tool boundaries: %+v", state.Groups)
+				}
+				return scores(req), nil
+			})
+			cfg := testConfig(api)
+			cfg.KeepRecentTurns = 2
+			request := &model.LLMRequest{Contents: contents}
+			report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: contents[6]}, request)
+			if err != nil || report.Err != nil || calls != 1 || report.RemovedTurns != 1 ||
+				!slices.Equal(request.Contents, contents[4:]) {
+				t.Fatalf("calls=%d report=%+v err=%v", calls, report, err)
+			}
+			after, _ := json.Marshal(contents)
+			if string(before) != string(after) {
+				t.Fatal("original messages were changed")
+			}
+		})
 	}
 }
 

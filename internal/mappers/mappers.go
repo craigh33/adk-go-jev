@@ -57,17 +57,17 @@ func ContentText(content *genai.Content) Projection {
 			text.WriteString(part.Text)
 			text.WriteByte('\n')
 		}
-		var data any
 		if call := part.FunctionCall; call != nil {
-			data = map[string]any{"call": call.Name, "id": call.ID, "arguments": call.Args}
-			p.Incomplete = p.Incomplete || len(call.PartialArgs) != 0 || call.WillContinue != nil
+			data := map[string]any{"call": call.Name, "id": call.ID, "arguments": call.Args}
+			p.Incomplete = !writeToolText(&text, data) || p.Incomplete || len(call.PartialArgs) != 0 ||
+				call.WillContinue != nil
 		}
 		if response := part.FunctionResponse; response != nil {
-			data = map[string]any{"result": response.Name, "id": response.ID, "response": response.Response}
-			p.Incomplete = p.Incomplete || len(response.Parts) != 0 || response.WillContinue != nil ||
+			data := map[string]any{"result": response.Name, "id": response.ID, "response": response.Response}
+			p.Incomplete = !writeToolText(&text, data) || p.Incomplete || len(response.Parts) != 0 ||
+				response.WillContinue != nil ||
 				response.Scheduling != ""
 		}
-		p.Incomplete = !writeToolText(&text, data) || p.Incomplete
 		remaining := *part
 		remaining.Text, remaining.FunctionCall, remaining.FunctionResponse = "", nil, nil
 		if !reflect.ValueOf(remaining).IsZero() {
@@ -80,9 +80,6 @@ func ContentText(content *genai.Content) Projection {
 }
 
 func writeToolText(text *strings.Builder, data any) bool {
-	if data == nil {
-		return true
-	}
 	encoded, err := json.Marshal(data)
 	if err != nil {
 		text.WriteString("[unsupported tool data]\n")

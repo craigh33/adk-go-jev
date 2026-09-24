@@ -73,6 +73,18 @@ func TestTextPreservesRolesAndSource(t *testing.T) {
 					Response: map[string]any{"found": true},
 				},
 			},
+			{
+				FunctionCall: &genai.FunctionCall{
+					ID:   "b",
+					Name: "combined",
+					Args: map[string]any{"query": "constraints"},
+				},
+				FunctionResponse: &genai.FunctionResponse{
+					ID:       "b",
+					Name:     "combined",
+					Response: map[string]any{"value": "Go"},
+				},
+			},
 		}}
 		before, err := json.Marshal(content)
 		if err != nil {
@@ -81,7 +93,9 @@ func TestTextPreservesRolesAndSource(t *testing.T) {
 		projection := ContentText(content)
 		if projection.Incomplete || !strings.HasPrefix(projection.Text, role+":\nFind the record\n") ||
 			!strings.Contains(projection.Text, `"arguments":{"id":1}`) ||
-			!strings.Contains(projection.Text, `"response":{"found":true}`) {
+			!strings.Contains(projection.Text, `"response":{"found":true}`) ||
+			!strings.Contains(projection.Text, `"arguments":{"query":"constraints"}`) ||
+			!strings.Contains(projection.Text, `"response":{"value":"Go"}`) {
 			t.Fatalf("incomplete conversion for role %q: %+v", role, projection)
 		}
 		after, err := json.Marshal(content)
@@ -106,6 +120,10 @@ func TestTextReportsOmissions(t *testing.T) {
 		{name: "invalid tool data", content: &genai.Content{Parts: []*genai.Part{
 			{FunctionCall: &genai.FunctionCall{Name: "lookup", Args: map[string]any{"value": math.NaN()}}},
 		}}},
+		{name: "invalid call with a result", content: &genai.Content{Parts: []*genai.Part{{
+			FunctionCall:     &genai.FunctionCall{Name: "lookup", Args: map[string]any{"value": math.NaN()}},
+			FunctionResponse: &genai.FunctionResponse{Name: "lookup", Response: map[string]any{"found": true}},
+		}}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

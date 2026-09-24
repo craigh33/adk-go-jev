@@ -152,7 +152,7 @@ func isConversationContent(content *genai.Content) bool {
 }
 
 func isUserMessage(content *genai.Content) bool {
-	if content == nil || content.Role != genai.RoleUser {
+	if content == nil || (content.Role != genai.RoleUser && content.Role != "") {
 		return false
 	}
 	return !slices.ContainsFunc(content.Parts, func(part *genai.Part) bool {
