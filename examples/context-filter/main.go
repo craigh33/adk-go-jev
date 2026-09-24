@@ -12,11 +12,12 @@ import (
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model/gemini"
+	"google.golang.org/adk/v2/plugin"
 	"google.golang.org/adk/v2/runner"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 
-	"github.com/craigh33/adk-go-typesafe/callbacks/contextfilter"
+	"github.com/craigh33/adk-go-typesafe/plugin/contextfilter"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
@@ -35,9 +36,7 @@ func run(observe bool) error {
 		return errors.New("set GEMINI_MODEL and GOOGLE_API_KEY")
 	}
 	client, err := typesafe.New(&typesafe.Options{
-		APIKey: os.Getenv(
-			"TYPESAFE_API_KEY",
-		),
+		APIKey:  os.Getenv("TYPESAFE_API_KEY"),
 		BaseURL: os.Getenv("TYPESAFE_BASE_URL"),
 		Model:   os.Getenv("TYPESAFE_MODEL"),
 	})
@@ -68,13 +67,13 @@ func run(observe bool) error {
 	}
 	a, err := llmagent.New(llmagent.Config{
 		Name: "assistant", Model: llm, Instruction: "Answer briefly.",
-		BeforeModelCallbacks: []llmagent.BeforeModelCallback{filter},
 	})
 	if err != nil {
 		return err
 	}
 	r, err := runner.New(runner.Config{
 		AppName: "context-filter-example", Agent: a, SessionService: session.InMemoryService(), AutoCreateSession: true,
+		PluginConfig: runner.PluginConfig{Plugins: []*plugin.Plugin{filter}},
 	})
 	if err != nil {
 		return err

@@ -1,6 +1,6 @@
 # Context filter
 
-Jev selects history for a Gemini-backed agent across a topic change and return. Saved conversation history remains available for later requests. Selection depends on Jev's judgments.
+A native ADK runner plugin uses Jev to select history for a Gemini-backed agent across a topic change and return. Saved conversation history remains available for later requests. Selection depends on Jev's judgments.
 
 ```bash
 export TYPESAFE_API_KEY='...'

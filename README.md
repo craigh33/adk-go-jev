@@ -127,7 +127,7 @@ Set `OutputKey` to persist the latest assessment and decision. API, policy, and 
 
 ## Dynamic context filter
 
-`callbacks/contextfilter` selects relevant historical turns before each model call using Jev Noul judgments:
+`plugin/contextfilter` is a native ADK runner plugin that selects relevant historical turns before each model call using Jev Noul judgments:
 
 ```go
 filter, err := contextfilter.New(contextfilter.Config{
@@ -137,12 +137,13 @@ filter, err := contextfilter.New(contextfilter.Config{
         // Inspect report.Decisions, report.RemovedTurns, report.Usage and report.Err.
     },
 })
-// Handle err, then add filter to llmagent.Config.BeforeModelCallbacks.
+// Handle err, then use this in runner.Config.PluginConfig.
+plugins := runner.PluginConfig{Plugins: []*plugin.Plugin{filter}}
 ```
 
 Set `Observe: false` to apply removals. Defaults protect two recent turns, skip histories below 8 KiB of projected text, and remove older turns only when relevance is below 0.1. `Pin` protects an application-selected message's entire turn. System instructions, compaction summaries, unsupported content, and incomplete or cross-turn tool pairs are retained. A non-text or unrecognizable current input skips review.
 
-Filtering selects original messages for the outgoing request without modifying saved history. Older turns can return when ADK supplies them again; filtering cannot restore originals already replaced by ADK compaction. Run assessment callbacks that need the complete request before the filter.
+Filtering selects original messages for the outgoing request without modifying saved history. Older turns can return when ADK supplies them again; filtering cannot restore originals already replaced by ADK compaction. ADK runs plugins before agent callbacks. Assessments that need the complete request must run in an earlier runner plugin.
 
 Each review request is capped at 64 KiB of JSON, with a shared two-second evaluation deadline. These are configurable byte/time budgets, not token limits. Failed or oversized batches retain their context; parent cancellation propagates. `OnReport` exposes proposed ranges, actual removals, review errors and Jev usage. Measure downstream usage and latency separately. See the [context-filter example](examples/context-filter) for complete wiring.
 
@@ -174,7 +175,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution gu
 - [`tools/systemone`](tools/systemone): ADK tools for System One evaluations.
 - [`agent/systemone`](agent/systemone): classification and routing agents.
 - [`callbacks/systemone`](callbacks/systemone): model and tool assessment callbacks.
-- [`callbacks/contextfilter`](callbacks/contextfilter): request-only conversation filtering.
+- [`plugin/contextfilter`](plugin/contextfilter): request-only conversation filtering.
 - [`internal/mappers`](internal/mappers): request and response conversions.
 - [`internal/typesafe`](internal/typesafe): generated API wire types.
 - [`api`](api): generation configuration and Go type overlays.
