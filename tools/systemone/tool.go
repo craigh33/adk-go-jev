@@ -10,6 +10,7 @@ import (
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
 
+	"github.com/craigh33/adk-go-typesafe/internal/mappers"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
@@ -58,6 +59,6 @@ func New(cfg Config) (tool.Tool, error) {
 		if err != nil {
 			return nil, fmt.Errorf("systemone tool: evaluate: %w", err)
 		}
-		return typesafe.ResponseMap(response)
+		return mappers.ResponseMap(response)
 	})
 }

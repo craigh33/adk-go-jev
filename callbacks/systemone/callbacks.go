@@ -12,6 +12,7 @@ import (
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/genai"
 
+	"github.com/craigh33/adk-go-typesafe/internal/mappers"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
@@ -123,7 +124,7 @@ func (cfg Config) assess(ctx agent.Context, state any) (Decision, error) {
 		decision.Reason = "The configured assessment policy requires review."
 	}
 	if cfg.OutputKey != "" {
-		record, err := typesafe.ResponseMap(response)
+		record, err := mappers.ResponseMap(response)
 		if err != nil {
 			return Decision{}, err
 		}

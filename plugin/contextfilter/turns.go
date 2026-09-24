@@ -10,7 +10,7 @@ import (
 	"github.com/craigh33/adk-go-typesafe/internal/adkcontent"
 )
 
-func groupTurns(ctx agent.Context, contents []*genai.Content, cfg Config) []turn {
+func (p *contextFilter) groupTurns(ctx agent.Context, contents []*genai.Content) []turn {
 	active := -1
 	for i, content := range contents {
 		if content != nil && reflect.DeepEqual(content, ctx.UserContent()) {
@@ -29,14 +29,14 @@ func groupTurns(ctx agent.Context, contents []*genai.Content, cfg Config) []turn
 			groups = append(groups, turn{start: i, pinned: !boundary})
 		}
 		g := &groups[len(groups)-1]
-		p := adkcontent.Text(content)
+		projection := adkcontent.Text(content)
 		g.end = i + 1
-		g.text += p.Text + "\n"
-		g.pinned = g.pinned || i >= active || p.Incomplete || !isConversationContent(content) ||
+		g.text += projection.Text + "\n"
+		g.pinned = g.pinned || i >= active || projection.Incomplete || !isConversationContent(content) ||
 			containsSummary(content, summaries) ||
-			(cfg.Pin != nil && cfg.Pin(ctx, content))
+			(p.cfg.Pin != nil && p.cfg.Pin(ctx, content))
 	}
-	for i := max(0, len(groups)-cfg.KeepRecentTurns); i < len(groups); i++ {
+	for i := max(0, len(groups)-p.cfg.KeepRecentTurns); i < len(groups); i++ {
 		groups[i].pinned = true
 	}
 	protectToolPairs(contents, groups)

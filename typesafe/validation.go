@@ -52,8 +52,9 @@ func validateAnswer(question Question, answer Answer) error {
 	case ScoreAnswer:
 		return validateScoreAnswer(wire.Criteria, value)
 	case NoulAnswer:
-		_, err := NoulProbability(value)
-		return err
+		if value.Noul < 0 || value.Noul > 1 {
+			return errors.New("noul must be between zero and one")
+		}
 	}
 	return nil
 }

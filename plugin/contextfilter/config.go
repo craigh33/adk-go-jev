@@ -52,7 +52,7 @@ type Config struct {
 	OnReport func(agent.Context, Report)
 }
 
-func configure(cfg Config) (Config, error) {
+func (cfg Config) configure() (Config, error) {
 	if cfg.API == nil {
 		return Config{}, errors.New("contextfilter: API is required")
 	}

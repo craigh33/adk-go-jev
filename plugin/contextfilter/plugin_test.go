@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"reflect"
 	"strings"
 	"testing"
@@ -268,5 +269,59 @@ func TestSingleEvaluationAndRequestLimit(t *testing.T) {
 		} else if calls != 1 || report.Err != nil || report.RemovedTurns != 2 || len(request.Contents) != 1 {
 			t.Fatalf("expected one evaluation for both turns: calls=%d report=%+v", calls, report)
 		}
+	}
+}
+
+func TestConfig(t *testing.T) {
+	t.Parallel()
+	api := evaluatorFunc(
+		func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) { return scores(req), nil },
+	)
+	for _, cfg := range []Config{
+		{}, {API: api, RemovalThreshold: -1}, {API: api, RemovalThreshold: 2},
+		{API: api, RemovalThreshold: math.NaN()}, {API: api, RemovalThreshold: math.Inf(1)},
+		{API: api, KeepRecentTurns: -1}, {API: api, MinBytes: -1}, {API: api, MaxRequestBytes: -1}, {API: api, Timeout: -1},
+	} {
+		if _, err := New(cfg); err == nil {
+			t.Fatalf("accepted invalid config: %+v", cfg)
+		}
+	}
+	filter, err := New(Config{API: api})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filter.Name() != "context_filter" {
+		t.Fatalf("unexpected plugin name: %q", filter.Name())
+	}
+	if _, err := filter.BeforeModelCallback()(callbackContext{parent: t.Context()}, nil); err == nil {
+		t.Fatal("accepted nil request")
+	}
+	custom, err := New(Config{API: api, Name: "history"})
+	if err != nil || custom.Name() != "history" {
+		t.Fatalf("custom plugin name was not used: %v", err)
+	}
+}
+
+func TestRequestIncludesPinnedEvidence(t *testing.T) {
+	t.Parallel()
+	p := &contextFilter{cfg: Config{Model: "jev-version"}}
+	request := p.newRequest(
+		&model.LLMRequest{Config: &genai.GenerateContentConfig{SystemInstruction: user("Answer briefly")}},
+		[]turn{{start: 0, text: "Use SQLite"}, {start: 2, pinned: true, text: "Current task"}},
+		"Which database did we choose?",
+	)
+	state := request.State.(reviewState)
+	if request.Model != "jev-version" || state.LatestRequest != "Which database did we choose?" ||
+		!strings.Contains(state.Instructions, "Answer briefly") || len(state.Groups) != 2 || !state.Groups[1].Pinned {
+		t.Fatalf("lost review evidence: %+v", request)
+	}
+	if len(request.Questions) != 1 {
+		t.Fatalf("pinned turn offered for removal: %+v", request.Questions)
+	}
+	question, ok := request.Questions["0"].(typesafe.Noul)
+	instructions, _ := question.Instructions.(string)
+	if !ok || !strings.Contains(instructions, "group 0") || question.Criteria == nil ||
+		question.Criteria.True == "" || question.Criteria.False == "" {
+		t.Fatalf("missing relevance criteria: %+v", request.Questions)
 	}
 }

@@ -13,13 +13,14 @@ import (
 	"google.golang.org/adk/v2/plugin"
 
 	"github.com/craigh33/adk-go-typesafe/internal/adkcontent"
+	"github.com/craigh33/adk-go-typesafe/internal/mappers"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
 // New returns an ADK plugin that filters whole turns without changing saved history.
 // Evaluation errors retain the affected turns; parent cancellation propagates.
 func New(cfg Config) (*plugin.Plugin, error) {
-	cfg, err := configure(cfg)
+	cfg, err := cfg.configure()
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func (p *contextFilter) assessTurns(ctx agent.Context, request *model.LLMRequest
 	if current.Incomplete || !isConversationContent(ctx.UserContent()) {
 		return Report{}
 	}
-	turns := groupTurns(ctx, request.Contents, p.cfg)
+	turns := p.groupTurns(ctx, request.Contents)
 	var size int
 	for _, turn := range turns {
 		size += len(turn.text)
@@ -87,7 +88,7 @@ func (p *contextFilter) assessTurns(ctx agent.Context, request *model.LLMRequest
 			continue
 		}
 		id := strconv.Itoa(turn.start)
-		relevance, err := typesafe.NoulProbability(response.Answers[id])
+		relevance, err := mappers.NoulProbability(response.Answers[id])
 		if err != nil {
 			report.Err = errors.Join(report.Err, fmt.Errorf("contextfilter: turn at %s: %w", id, err))
 			continue
@@ -97,6 +98,28 @@ func (p *contextFilter) assessTurns(ctx agent.Context, request *model.LLMRequest
 		})
 	}
 	return report
+}
+
+func (p *contextFilter) newRequest(request *model.LLMRequest, turns []turn, latest string) *typesafe.Request {
+	state := reviewState{LatestRequest: latest}
+	if request.Config != nil {
+		state.Instructions = adkcontent.Text(request.Config.SystemInstruction).Text
+	}
+	questions := make(map[string]typesafe.Question)
+	for _, turn := range turns {
+		id := strconv.Itoa(turn.start)
+		state.Groups = append(state.Groups, reviewGroup{ID: id, Pinned: turn.pinned, Text: turn.text})
+		if turn.pinned {
+			continue
+		}
+		questions[id] = typesafe.Noul{
+			Instructions: fmt.Sprintf(relevanceInstructions, id),
+			Criteria: &typesafe.NoulCriteria{
+				True: relevantCriteria, False: irrelevantCriteria,
+			},
+		}
+	}
+	return &typesafe.Request{Model: p.cfg.Model, State: state, Questions: questions}
 }
 
 func (p *contextFilter) evaluate(ctx context.Context, request *typesafe.Request) (*typesafe.Response, error) {

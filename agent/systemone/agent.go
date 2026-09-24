@@ -15,6 +15,7 @@ import (
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 
+	"github.com/craigh33/adk-go-typesafe/internal/mappers"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
@@ -83,7 +84,7 @@ func (cfg Config) run(ctx agent.InvocationContext) iter.Seq2[*session.Event, err
 			yield(nil, err)
 			return
 		}
-		record, err := typesafe.ResponseMap(response)
+		record, err := mappers.ResponseMap(response)
 		if err != nil {
 			yield(nil, err)
 			return

@@ -1,15 +1,18 @@
-package typesafe
+// Package mappers converts TypeSafe responses for use by the ADK adapters.
+package mappers
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+
+	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
 // ResponseMap converts response metadata and typed answers into a JSON-compatible
 // map, preserving zero probabilities and scores.
-func ResponseMap(response *Response) (map[string]any, error) {
+func ResponseMap(response *typesafe.Response) (map[string]any, error) {
 	if response == nil {
 		return nil, errors.New("response is nil")
 	}
@@ -25,8 +28,8 @@ func ResponseMap(response *Response) (map[string]any, error) {
 }
 
 // NoulProbability extracts a finite probability between zero and one from a Noul answer.
-func NoulProbability(answer Answer) (float64, error) {
-	value, ok := answer.(NoulAnswer)
+func NoulProbability(answer typesafe.Answer) (float64, error) {
+	value, ok := answer.(typesafe.NoulAnswer)
 	if !ok || math.IsNaN(value.Noul) || value.Noul < 0 || value.Noul > 1 {
 		return 0, errors.New("answer must contain a Noul probability between zero and one")
 	}
