@@ -13,5 +13,6 @@ export TYPESAFE_BASE_URL='https://api.typesafe.ai'
 - [systemone-tool](systemone-tool): attach an application-configured System One tool to an ADK agent.
 - [bedrock-routing](bedrock-routing): route tickets to Bedrock-backed agents with confidence fallback.
 - [systemone-assessment](systemone-assessment): assess model input, output, and tool calls.
+- [context-filter](context-filter): select relevant conversation turns before each model call.
 
 Each example has its own setup instructions, including any additional provider credentials. Run commands from the repository root unless the example says otherwise.

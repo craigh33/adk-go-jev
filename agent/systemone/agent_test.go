@@ -2,10 +2,12 @@ package systemone
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"iter"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 
 	"google.golang.org/adk/v2/agent"
@@ -177,6 +179,30 @@ func TestClassificationStructuredState(t *testing.T) {
 	}
 	if _, err := saved.Get("triage"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMappingErrorsIdentifyAgent(t *testing.T) {
+	t.Parallel()
+	for _, response := range []*typesafe.Response{nil, answer("billing", math.NaN())} {
+		cfg := config(fakeAPI(func(context.Context, *typesafe.Request) (*typesafe.Response, error) {
+			return response, nil
+		}))
+		cfg.State = func(agent.InvocationContext) (any, error) { return "Input", nil }
+		calls := 0
+		for event, err := range cfg.run(&agent.StrictContextMock{Ctx: t.Context()}) {
+			calls++
+			if event != nil || err == nil || !strings.Contains(err.Error(), "systemone agent: map assessment:") {
+				t.Fatalf("missing caller context: event=%v err=%v", event, err)
+			}
+			var cause *json.UnsupportedValueError
+			if response != nil && !errors.As(err, &cause) {
+				t.Fatalf("lost encoding error: %v", err)
+			}
+		}
+		if calls != 1 {
+			t.Fatalf("expected one mapping failure, got %d", calls)
+		}
 	}
 }
 

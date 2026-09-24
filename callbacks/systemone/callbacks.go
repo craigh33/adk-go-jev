@@ -124,9 +124,9 @@ func (cfg Config) assess(ctx agent.Context, state any) (Decision, error) {
 		decision.Reason = "The configured assessment policy requires review."
 	}
 	if cfg.OutputKey != "" {
-		record, err := mappers.ToolResponse(response)
+		record, err := mappers.ResponseMap(response)
 		if err != nil {
-			return Decision{}, err
+			return Decision{}, fmt.Errorf("systemone callback: map assessment: %w", err)
 		}
 		record["decision"] = map[string]any{"block": decision.Block, "reason": decision.Reason}
 		if err := ctx.State().Set(cfg.OutputKey, record); err != nil {
