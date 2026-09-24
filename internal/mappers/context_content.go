@@ -8,13 +8,6 @@ import (
 	"google.golang.org/genai"
 )
 
-// ContextProjection is the text representation supplied to Jev. Unsupported
-// marks content whose full meaning could not be represented.
-type ContextProjection struct {
-	Text        string
-	Unsupported bool
-}
-
 // ContextContent projects an ADK message without modifying it or exposing opaque payloads.
 func ContextContent(content *genai.Content) ContextProjection {
 	if content == nil {

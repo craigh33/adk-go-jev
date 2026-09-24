@@ -3,7 +3,9 @@ package contextfilter
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -77,7 +79,7 @@ func TestProtectedGroups(t *testing.T) {
 					strings.Contains(string(encoded), "private reasoning") {
 					t.Fatal("opaque content sent to reviewer")
 				}
-				return scores(req, 0), nil
+				return scores(req), nil
 			})
 			cfg := testConfig(api)
 			if tc.pin {
@@ -102,7 +104,7 @@ func TestRecentTurnsAndEmptyToolIDs(t *testing.T) {
 		if len(req.Questions) != 1 {
 			t.Fatalf("recent turn offered for removal: %+v", req.Questions)
 		}
-		return scores(req, 0), nil
+		return scores(req), nil
 	})
 	cfg := testConfig(api)
 	cfg.KeepRecentTurns = 2
@@ -113,22 +115,27 @@ func TestRecentTurnsAndEmptyToolIDs(t *testing.T) {
 	}
 }
 
+type stubSession struct {
+	session.Session
+
+	events session.Events
+}
+
+func (s stubSession) Events() session.Events { return s.events }
+
+type stubEvents struct {
+	session.Events
+
+	events []*session.Event
+}
+
+func (e stubEvents) All() iter.Seq[*session.Event] { return slices.Values(e.events) }
+
 func TestCompactionSummaryIsProtected(t *testing.T) {
 	t.Parallel()
-	svc := session.InMemoryService()
-	created, err := svc.Create(
-		t.Context(),
-		&session.CreateRequest{AppName: "test", UserID: "user", SessionID: "session"},
-	)
-	if err != nil {
-		t.Fatal(err)
-	}
 	summary := reply("Previously agreed constraints")
 	event := &session.Event{
 		Actions: session.EventActions{Compaction: &session.EventCompaction{CompactedContent: summary}},
-	}
-	if err := svc.AppendEvent(t.Context(), created.Session, event); err != nil {
-		t.Fatal(err)
 	}
 	current := user("Current")
 	contents := []*genai.Content{
@@ -142,10 +149,13 @@ func TestCompactionSummaryIsProtected(t *testing.T) {
 		if len(req.Questions) != 1 {
 			t.Fatal("summary offered for removal")
 		}
-		return scores(req, 0), nil
+		return scores(req), nil
 	})
 	request := &model.LLMRequest{Contents: contents}
-	ctx := callbackContext{parent: t.Context(), input: current, sess: created.Session}
+	ctx := callbackContext{
+		parent: t.Context(), input: current,
+		sess: stubSession{events: stubEvents{events: []*session.Event{event}}},
+	}
 	report, err := apply(t, testConfig(api), ctx, request)
 	if err != nil || report.Err != nil ||
 		!reflect.DeepEqual(request.Contents, []*genai.Content{contents[0], contents[1], current}) {

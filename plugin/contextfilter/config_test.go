@@ -11,12 +11,12 @@ import (
 func TestConfig(t *testing.T) {
 	t.Parallel()
 	api := evaluatorFunc(
-		func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) { return scores(req, 0), nil },
+		func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) { return scores(req), nil },
 	)
 	for _, cfg := range []Config{
 		{}, {API: api, RemovalThreshold: -1}, {API: api, RemovalThreshold: 2},
 		{API: api, RemovalThreshold: math.NaN()}, {API: api, RemovalThreshold: math.Inf(1)},
-		{API: api, KeepRecentTurns: -1}, {API: api, MinBytes: -1}, {API: api, MaxBatchBytes: -1}, {API: api, Timeout: -1},
+		{API: api, KeepRecentTurns: -1}, {API: api, MinBytes: -1}, {API: api, MaxRequestBytes: -1}, {API: api, Timeout: -1},
 	} {
 		if _, err := New(cfg); err == nil {
 			t.Fatalf("accepted invalid config: %+v", cfg)

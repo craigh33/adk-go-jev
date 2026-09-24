@@ -10,12 +10,6 @@ import (
 	"github.com/craigh33/adk-go-typesafe/internal/mappers"
 )
 
-type turn struct {
-	start, end int
-	pinned     bool
-	text       string
-}
-
 func groupTurns(ctx agent.Context, contents []*genai.Content, cfg Config) []turn {
 	active := -1
 	for i, content := range contents {

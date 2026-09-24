@@ -145,7 +145,7 @@ Set `Observe: false` to apply removals. Defaults protect two recent turns, skip 
 
 Filtering selects original messages for the outgoing request without modifying saved history. Older turns can return when ADK supplies them again; filtering cannot restore originals already replaced by ADK compaction. ADK runs plugins before agent callbacks. Assessments that need the complete request must run in an earlier runner plugin.
 
-Each review request is capped at 64 KiB of JSON, with a shared two-second evaluation deadline. These are configurable byte/time budgets, not token limits. Failed or oversized batches retain their context; parent cancellation propagates. `OnReport` exposes proposed ranges, actual removals, review errors and Jev usage. Measure downstream usage and latency separately. See the [context-filter example](examples/context-filter) for complete wiring.
+Each model call makes at most one Jev evaluation, capped at 64 KiB of JSON (`MaxRequestBytes`) and a two-second timeout. These are configurable byte/time budgets, not token limits. Failed or oversized evaluations leave history unchanged; parent cancellation propagates. `OnReport` exposes proposed ranges, actual removals, review errors and Jev usage. Measure downstream usage and latency separately. See the [context-filter example](examples/context-filter) for complete wiring.
 
 ## Examples
 

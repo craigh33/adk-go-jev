@@ -14,7 +14,6 @@ import (
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 
-	"github.com/craigh33/adk-go-typesafe/internal/mappers"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
@@ -42,10 +41,10 @@ func (c callbackContext) Session() session.Session    { return c.sess }
 func user(text string) *genai.Content  { return genai.NewContentFromText(text, genai.RoleUser) }
 func reply(text string) *genai.Content { return genai.NewContentFromText(text, genai.RoleModel) }
 
-func scores(request *typesafe.Request, probability float64) *typesafe.Response {
+func scores(request *typesafe.Request) *typesafe.Response {
 	answers := make(map[string]typesafe.Answer, len(request.Questions))
 	for id := range request.Questions {
-		answers[id] = typesafe.NoulAnswer{Type: "noul", Noul: probability}
+		answers[id] = typesafe.NoulAnswer{Type: "noul", Noul: 0}
 	}
 	return &typesafe.Response{Model: "jev-test", Answers: answers, Usage: typesafe.Usage{InputTokens: 10}}
 }
@@ -86,7 +85,7 @@ func TestWholeTurnSelection(t *testing.T) {
 				if req.Model != "jev-pinned" || len(req.Questions) != 2 {
 					t.Fatalf("unexpected request: %+v", req)
 				}
-				state := req.State.(mappers.ContextReviewState)
+				state := req.State.(reviewState)
 				if !strings.Contains(state.LatestRequest, "Change the title") ||
 					!strings.Contains(state.Instructions, "Be precise") {
 					t.Fatalf("missing request or instructions: %+v", state)
@@ -94,7 +93,7 @@ func TestWholeTurnSelection(t *testing.T) {
 				if !strings.Contains(state.Groups[0].Text, `"result":"lookup"`) {
 					t.Fatal("tool result absent from review")
 				}
-				response := scores(req, 0)
+				response := scores(req)
 				response.Answers["4"] = typesafe.NoulAnswer{Noul: 0.1}
 				return response, nil
 			})
@@ -136,7 +135,7 @@ func TestInvalidAnswersRetainAffectedTurns(t *testing.T) {
 	current := user("Current")
 	contents := []*genai.Content{user("First"), reply("One"), user("Second"), reply("Two"), current}
 	api := evaluatorFunc(func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
-		response := scores(req, 0)
+		response := scores(req)
 		delete(response.Answers, "0")
 		return response, nil
 	})
@@ -164,10 +163,10 @@ func TestReviewFailuresAndCancellation(t *testing.T) {
 				switch mode {
 				case "cancel":
 					cancel()
-					return scores(req, 0), nil
+					return scores(req), nil
 				case "timeout":
 					<-ctx.Done()
-					return scores(req, 0), nil // Even a late successful result must be ignored.
+					return scores(req), nil // Even a late successful result must be ignored.
 				case "nil":
 					return nil, nil //nolint:nilnil // Deliberately invalid evaluator response.
 				default:
@@ -225,5 +224,44 @@ func TestSkipsShortOrUnknownContext(t *testing.T) {
 	request.Contents = []*genai.Content{user("Old"), reply("Done"), current}
 	if _, err := apply(t, testConfig(api), callbackContext{parent: t.Context(), input: current}, request); err != nil {
 		t.Fatal(err)
+	}
+	current = user("Only current turn")
+	request.Contents = []*genai.Content{current}
+	if _, err := apply(t, testConfig(api), callbackContext{parent: t.Context(), input: current}, request); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSingleEvaluationAndRequestLimit(t *testing.T) {
+	t.Parallel()
+	for _, limit := range []int{1, defaultMaxRequestBytes} {
+		calls := 0
+		api := evaluatorFunc(func(ctx context.Context, req *typesafe.Request) (*typesafe.Response, error) {
+			calls++
+			data, err := json.Marshal(req)
+			if err != nil || len(data) > limit || len(req.Questions) != 2 {
+				t.Fatalf("unexpected evaluation: bytes=%d limit=%d questions=%d", len(data), limit, len(req.Questions))
+			}
+			if _, ok := ctx.Deadline(); !ok {
+				t.Fatal("evaluation has no deadline")
+			}
+			return scores(req), nil
+		})
+		current := user("Current")
+		contents := []*genai.Content{user("First"), reply("One"), user("Second"), reply("Two"), current}
+		request := &model.LLMRequest{Contents: contents}
+		cfg := testConfig(api)
+		cfg.MaxRequestBytes = limit
+		report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if limit == 1 {
+			if calls != 0 || report.Err == nil || !reflect.DeepEqual(request.Contents, contents) {
+				t.Fatal("oversized request must retain history without calling Jev")
+			}
+		} else if calls != 1 || report.Err != nil || report.RemovedTurns != 2 || len(request.Contents) != 1 {
+			t.Fatalf("expected one evaluation for both turns: calls=%d report=%+v", calls, report)
+		}
 	}
 }

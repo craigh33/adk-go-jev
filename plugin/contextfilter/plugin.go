@@ -3,13 +3,16 @@ package contextfilter
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strconv"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/plugin"
 
 	"github.com/craigh33/adk-go-typesafe/internal/mappers"
+	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
 // New returns an ADK plugin that filters whole turns without changing saved history.
@@ -37,7 +40,7 @@ func (p *contextFilter) beforeModel(ctx agent.Context, request *model.LLMRequest
 		p.report(ctx, Report{Err: err})
 		return nil, err
 	}
-	report := p.evaluate(ctx, request)
+	report := p.assessTurns(ctx, request)
 	if err := ctx.Err(); err != nil {
 		report.Err = err
 		p.report(ctx, report)
@@ -56,27 +59,64 @@ func (p *contextFilter) report(ctx agent.Context, report Report) {
 	}
 }
 
-func (p *contextFilter) evaluate(ctx agent.Context, request *model.LLMRequest) Report {
-	groups := groupTurns(ctx, request.Contents, p.cfg)
-	var size int
-	for _, group := range groups {
-		size += len(group.text)
-	}
-	if size < p.cfg.MinBytes {
-		return Report{}
-	}
+func (p *contextFilter) assessTurns(ctx agent.Context, request *model.LLMRequest) Report {
 	current := mappers.ContextContent(ctx.UserContent())
 	if current.Unsupported {
 		return Report{}
 	}
-	state := mappers.ContextReviewState{LatestRequest: current.Text}
-	if request.Config != nil {
-		state.Instructions = mappers.ContextContent(request.Config.SystemInstruction).Text
+	turns := groupTurns(ctx, request.Contents, p.cfg)
+	var size int
+	for _, turn := range turns {
+		size += len(turn.text)
 	}
-	if state.LatestRequest == "" {
+	if size < p.cfg.MinBytes {
 		return Report{}
 	}
-	reviewCtx, cancel := context.WithTimeout(ctx, p.cfg.Timeout)
+	evaluation := p.newRequest(request, turns, current.Text)
+	if len(evaluation.Questions) == 0 {
+		return Report{}
+	}
+	response, err := p.evaluate(ctx, evaluation)
+	if err != nil {
+		return Report{Err: err}
+	}
+	report := Report{Usage: response.Usage}
+	for _, turn := range turns {
+		if turn.pinned {
+			continue
+		}
+		id := strconv.Itoa(turn.start)
+		relevance, err := mappers.ContextRelevance(response.Answers[id], id)
+		if err != nil {
+			report.Err = errors.Join(report.Err, err)
+			continue
+		}
+		report.Decisions = append(report.Decisions, Decision{
+			Start: turn.start, End: turn.end, Relevance: relevance, Remove: relevance < p.cfg.RemovalThreshold,
+		})
+	}
+	return report
+}
+
+func (p *contextFilter) evaluate(ctx context.Context, request *typesafe.Request) (*typesafe.Response, error) {
+	data, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > p.cfg.MaxRequestBytes {
+		return nil, errors.New("contextfilter: evaluation exceeds request byte limit")
+	}
+	ctx, cancel := context.WithTimeout(ctx, p.cfg.Timeout)
 	defer cancel()
-	return p.evaluateBatches(reviewCtx, groups, state)
+	response, err := p.cfg.API.Evaluate(ctx, request)
+	if err == nil {
+		err = ctx.Err()
+	}
+	if err != nil {
+		return nil, err
+	}
+	if response == nil {
+		return nil, errors.New("contextfilter: missing evaluation response")
+	}
+	return response, nil
 }
