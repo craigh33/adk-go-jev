@@ -1,0 +1,154 @@
+package contextfilter
+
+import (
+	"context"
+	"encoding/json"
+	"reflect"
+	"strings"
+	"testing"
+
+	"google.golang.org/adk/v2/agent"
+	"google.golang.org/adk/v2/model"
+	"google.golang.org/adk/v2/session"
+	"google.golang.org/genai"
+
+	"github.com/craigh33/adk-go-typesafe/typesafe"
+)
+
+func call(id string) *genai.Content {
+	return &genai.Content{
+		Role: genai.RoleModel,
+		Parts: []*genai.Part{
+			{FunctionCall: &genai.FunctionCall{ID: id, Name: "lookup", Args: map[string]any{"query": "old"}}},
+		},
+	}
+}
+
+func result(id string) *genai.Content {
+	return &genai.Content{
+		Role: genai.RoleUser,
+		Parts: []*genai.Part{
+			{
+				FunctionResponse: &genai.FunctionResponse{
+					ID:       id,
+					Name:     "lookup",
+					Response: map[string]any{"value": "found"},
+				},
+			},
+		},
+	}
+}
+
+func TestProtectedGroups(t *testing.T) {
+	t.Parallel()
+	image := &genai.Content{
+		Role:  genai.RoleUser,
+		Parts: []*genai.Part{{InlineData: &genai.Blob{MIMEType: "image/png", Data: []byte("image payload")}}},
+	}
+	for _, tc := range []struct {
+		name string
+		old  []*genai.Content
+		pin  bool
+	}{
+		{"preamble", []*genai.Content{reply("Earlier summary")}, false},
+		{"system", []*genai.Content{user("Old"), {Role: "system", Parts: []*genai.Part{{Text: "Rules"}}}}, false},
+		{"developer", []*genai.Content{user("Old"), {Role: "developer", Parts: []*genai.Part{{Text: "Rules"}}}}, false},
+		{"image", []*genai.Content{image, reply("Description")}, false},
+		{"thought", []*genai.Content{user("Old"), {Role: genai.RoleModel, Parts: []*genai.Part{{Thought: true, Text: "private reasoning"}}}}, false},
+		{"missing call", []*genai.Content{user("Old"), result("missing")}, false},
+		{"missing result", []*genai.Content{user("Old"), call("pending")}, false},
+		{"cross turn pair", []*genai.Content{user("Old"), call("a"), user("Another"), result("a")}, false},
+		{"duplicate calls", []*genai.Content{user("Old"), call("a"), user("Another"), call("a"), result("a")}, false},
+		{"application pinned", []*genai.Content{user("Old"), reply("Keep this")}, true},
+		{"nil message", []*genai.Content{user("Old"), nil}, false},
+		{"nil part", []*genai.Content{user("Old"), {Role: genai.RoleModel, Parts: []*genai.Part{nil}}}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			current := user("Current")
+			contents := append([]*genai.Content{}, tc.old...)
+			contents = append(contents, user("Disposable"), reply("Unrelated"), current)
+			api := evaluatorFunc(func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
+				if len(req.Questions) != 1 {
+					t.Fatalf("protected groups offered for removal: %+v", req.Questions)
+				}
+				encoded, _ := json.Marshal(req)
+				if strings.Contains(string(encoded), "aW1hZ2UgcGF5bG9hZA==") ||
+					strings.Contains(string(encoded), "private reasoning") {
+					t.Fatal("opaque content sent to reviewer")
+				}
+				return scores(req, 0), nil
+			})
+			cfg := testConfig(api)
+			if tc.pin {
+				cfg.Pin = func(_ agent.Context, content *genai.Content) bool { return content == tc.old[1] }
+			}
+			request := &model.LLMRequest{Contents: contents}
+			report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request)
+			want := append(append([]*genai.Content{}, tc.old...), current)
+			if err != nil || report.Err != nil || report.RemovedTurns != 1 ||
+				!reflect.DeepEqual(request.Contents, want) {
+				t.Fatalf("report=%+v err=%v", report, err)
+			}
+		})
+	}
+}
+
+func TestRecentTurnsAndEmptyToolIDs(t *testing.T) {
+	t.Parallel()
+	current := user("Current")
+	contents := []*genai.Content{user("Old"), call(""), result(""), user("Recent"), reply("Noted"), current}
+	api := evaluatorFunc(func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
+		if len(req.Questions) != 1 {
+			t.Fatalf("recent turn offered for removal: %+v", req.Questions)
+		}
+		return scores(req, 0), nil
+	})
+	cfg := testConfig(api)
+	cfg.KeepRecentTurns = 2
+	request := &model.LLMRequest{Contents: contents}
+	report, err := apply(t, cfg, callbackContext{parent: t.Context(), input: current}, request)
+	if err != nil || report.Err != nil || !reflect.DeepEqual(request.Contents, contents[3:]) {
+		t.Fatalf("report=%+v err=%v", report, err)
+	}
+}
+
+func TestCompactionSummaryIsProtected(t *testing.T) {
+	t.Parallel()
+	svc := session.InMemoryService()
+	created, err := svc.Create(
+		t.Context(),
+		&session.CreateRequest{AppName: "test", UserID: "user", SessionID: "session"},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	summary := reply("Previously agreed constraints")
+	event := &session.Event{
+		Actions: session.EventActions{Compaction: &session.EventCompaction{CompactedContent: summary}},
+	}
+	if err := svc.AppendEvent(t.Context(), created.Session, event); err != nil {
+		t.Fatal(err)
+	}
+	current := user("Current")
+	contents := []*genai.Content{
+		user("Old"),
+		reply("Previously agreed constraints"),
+		user("Disposable"),
+		reply("Done"),
+		current,
+	}
+	api := evaluatorFunc(func(_ context.Context, req *typesafe.Request) (*typesafe.Response, error) {
+		if len(req.Questions) != 1 {
+			t.Fatal("summary offered for removal")
+		}
+		return scores(req, 0), nil
+	})
+	request := &model.LLMRequest{Contents: contents}
+	ctx := callbackContext{parent: t.Context(), input: current, sess: created.Session}
+	report, err := apply(t, testConfig(api), ctx, request)
+	if err != nil || report.Err != nil ||
+		!reflect.DeepEqual(request.Contents, []*genai.Content{contents[0], contents[1], current}) {
+		t.Fatalf("report=%+v err=%v", report, err)
+	}
+}

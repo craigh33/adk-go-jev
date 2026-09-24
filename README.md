@@ -10,7 +10,7 @@
 
 [TypeSafe AI](https://typesafe.ai/) System One integration for [adk-go](https://github.com/google/adk-go), bringing Choice, Score, and Noul primitives to Go agents and workflows with models such as [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev).
 
-Provides a typed HTTP client, ADK function tool, classification and routing agent, and assessment callbacks. The client is a temporary bridge until TypeSafe publishes a Go SDK; its API types are generated from TypeSafe's OpenAPI schema.
+Provides a typed HTTP client, ADK function tool, classification and routing agent, assessment callbacks, and dynamic context filtering. The client is a temporary bridge until TypeSafe publishes a Go SDK; its API types are generated from TypeSafe's OpenAPI schema.
 
 **Other providers:** [adk-go-bedrock](https://github.com/craigh33/adk-go-bedrock) · [adk-go-ollama](https://github.com/craigh33/adk-go-ollama) · [adk-go-kronk](https://github.com/craigh33/adk-go-kronk)
 
@@ -125,12 +125,34 @@ Omit `Routing` for a standalone classification agent. `State` defaults to the in
 
 Set `OutputKey` to persist the latest assessment and decision. API, policy, and state-storage errors propagate. Assessments inform application policy; they do not replace authorization checks. See the [callback example](examples/systemone-assessment) for all three hooks with an explicit Noul threshold.
 
+## Dynamic context filter
+
+`callbacks/contextfilter` selects relevant historical turns before each model call using Jev Noul judgments:
+
+```go
+filter, err := contextfilter.New(contextfilter.Config{
+    API: client,
+    Observe: true, // Inspect proposals before enabling removal.
+    OnReport: func(_ agent.Context, report contextfilter.Report) {
+        // Inspect report.Decisions, report.RemovedTurns, report.Usage and report.Err.
+    },
+})
+// Handle err, then add filter to llmagent.Config.BeforeModelCallbacks.
+```
+
+Set `Observe: false` to apply removals. Defaults protect two recent turns, skip histories below 8 KiB of projected text, and remove older turns only when relevance is below 0.1. `Pin` protects an application-selected message's entire turn. System instructions, compaction summaries, unsupported content, and incomplete or cross-turn tool pairs are retained. A non-text or unrecognizable current input skips review.
+
+Filtering selects original messages for the outgoing request without modifying saved history. Older turns can return when ADK supplies them again; filtering cannot restore originals already replaced by ADK compaction. Run assessment callbacks that need the complete request before the filter.
+
+Each review request is capped at 64 KiB of JSON, with a shared two-second evaluation deadline. These are configurable byte/time budgets, not token limits. Failed or oversized batches retain their context; parent cancellation propagates. `OnReport` exposes proposed ranges, actual removals, review errors and Jev usage. Measure downstream usage and latency separately. See the [context-filter example](examples/context-filter) for complete wiring.
+
 ## Examples
 
 - [`examples/typesafe-evaluate`](examples/typesafe-evaluate): text and structured state with all three question types.
 - [`examples/systemone-tool`](examples/systemone-tool): a Gemini-backed ADK agent calling an application-configured tool.
 - [`examples/bedrock-routing`](examples/bedrock-routing): Jev routing to Bedrock-backed ADK children, with confidence fallback.
 - [`examples/systemone-assessment`](examples/systemone-assessment): model and tool assessment callbacks.
+- [`examples/context-filter`](examples/context-filter): dynamic history selection with active and observe modes.
 
 ## Development
 
@@ -152,6 +174,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution gu
 - [`tools/systemone`](tools/systemone): ADK tools for System One evaluations.
 - [`agent/systemone`](agent/systemone): classification and routing agents.
 - [`callbacks/systemone`](callbacks/systemone): model and tool assessment callbacks.
+- [`callbacks/contextfilter`](callbacks/contextfilter): request-only conversation filtering.
 - [`internal/mappers`](internal/mappers): request and response conversions.
 - [`internal/typesafe`](internal/typesafe): generated API wire types.
 - [`api`](api): generation configuration and Go type overlays.
