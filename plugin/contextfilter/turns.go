@@ -7,7 +7,7 @@ import (
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/genai"
 
-	"github.com/craigh33/adk-go-typesafe/internal/mappers"
+	"github.com/craigh33/adk-go-typesafe/internal/adkcontent"
 )
 
 func groupTurns(ctx agent.Context, contents []*genai.Content, cfg Config) []turn {
@@ -29,10 +29,11 @@ func groupTurns(ctx agent.Context, contents []*genai.Content, cfg Config) []turn
 			groups = append(groups, turn{start: i, pinned: !boundary})
 		}
 		g := &groups[len(groups)-1]
-		p := mappers.ContextContent(content)
+		p := adkcontent.Text(content)
 		g.end = i + 1
 		g.text += p.Text + "\n"
-		g.pinned = g.pinned || i >= active || p.Unsupported || containsSummary(content, summaries) ||
+		g.pinned = g.pinned || i >= active || p.Incomplete || !isConversationContent(content) ||
+			containsSummary(content, summaries) ||
 			(cfg.Pin != nil && cfg.Pin(ctx, content))
 	}
 	for i := max(0, len(groups)-cfg.KeepRecentTurns); i < len(groups); i++ {
@@ -40,6 +41,10 @@ func groupTurns(ctx agent.Context, contents []*genai.Content, cfg Config) []turn
 	}
 	protectToolPairs(contents, groups)
 	return groups
+}
+
+func isConversationContent(content *genai.Content) bool {
+	return content != nil && (content.Role == genai.RoleUser || content.Role == genai.RoleModel || content.Role == "")
 }
 
 func isUserMessage(content *genai.Content) bool {

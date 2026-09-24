@@ -5,13 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/model"
 	"google.golang.org/adk/v2/plugin"
 
-	"github.com/craigh33/adk-go-typesafe/internal/mappers"
+	"github.com/craigh33/adk-go-typesafe/internal/adkcontent"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
@@ -60,8 +61,8 @@ func (p *contextFilter) report(ctx agent.Context, report Report) {
 }
 
 func (p *contextFilter) assessTurns(ctx agent.Context, request *model.LLMRequest) Report {
-	current := mappers.ContextContent(ctx.UserContent())
-	if current.Unsupported {
+	current := adkcontent.Text(ctx.UserContent())
+	if current.Incomplete || !isConversationContent(ctx.UserContent()) {
 		return Report{}
 	}
 	turns := groupTurns(ctx, request.Contents, p.cfg)
@@ -86,9 +87,9 @@ func (p *contextFilter) assessTurns(ctx agent.Context, request *model.LLMRequest
 			continue
 		}
 		id := strconv.Itoa(turn.start)
-		relevance, err := mappers.ContextRelevance(response.Answers[id], id)
+		relevance, err := typesafe.NoulProbability(response.Answers[id])
 		if err != nil {
-			report.Err = errors.Join(report.Err, err)
+			report.Err = errors.Join(report.Err, fmt.Errorf("contextfilter: turn at %s: %w", id, err))
 			continue
 		}
 		report.Decisions = append(report.Decisions, Decision{

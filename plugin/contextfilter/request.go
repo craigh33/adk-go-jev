@@ -6,14 +6,14 @@ import (
 
 	"google.golang.org/adk/v2/model"
 
-	"github.com/craigh33/adk-go-typesafe/internal/mappers"
+	"github.com/craigh33/adk-go-typesafe/internal/adkcontent"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 
 func (p *contextFilter) newRequest(request *model.LLMRequest, turns []turn, latest string) *typesafe.Request {
 	state := reviewState{LatestRequest: latest}
 	if request.Config != nil {
-		state.Instructions = mappers.ContextContent(request.Config.SystemInstruction).Text
+		state.Instructions = adkcontent.Text(request.Config.SystemInstruction).Text
 	}
 	questions := make(map[string]typesafe.Question)
 	for _, turn := range turns {

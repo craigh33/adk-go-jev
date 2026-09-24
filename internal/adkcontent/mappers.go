@@ -1,4 +1,4 @@
-package mappers
+package adkcontent
 
 import (
 	"encoding/json"
@@ -8,19 +8,17 @@ import (
 	"google.golang.org/genai"
 )
 
-// ContextContent projects an ADK message without modifying it or exposing opaque payloads.
-func ContextContent(content *genai.Content) ContextProjection {
+// Text projects an ADK message without modifying it or exposing opaque payloads.
+func Text(content *genai.Content) Projection {
 	if content == nil {
-		return ContextProjection{Unsupported: true}
+		return Projection{Incomplete: true}
 	}
-	p := ContextProjection{
-		Unsupported: content.Role != genai.RoleUser && content.Role != genai.RoleModel && content.Role != "",
-	}
+	var p Projection
 	var text strings.Builder
 	text.WriteString(content.Role + ":\n")
 	for _, part := range content.Parts {
 		if part == nil {
-			p.Unsupported = true
+			p.Incomplete = true
 			continue
 		}
 		if !part.Thought {
@@ -30,19 +28,19 @@ func ContextContent(content *genai.Content) ContextProjection {
 		var data any
 		if call := part.FunctionCall; call != nil {
 			data = map[string]any{"call": call.Name, "id": call.ID, "arguments": call.Args}
-			p.Unsupported = p.Unsupported || len(call.PartialArgs) != 0 || call.WillContinue != nil
+			p.Incomplete = p.Incomplete || len(call.PartialArgs) != 0 || call.WillContinue != nil
 		}
 		if response := part.FunctionResponse; response != nil {
 			data = map[string]any{"result": response.Name, "id": response.ID, "response": response.Response}
-			p.Unsupported = p.Unsupported || len(response.Parts) != 0 || response.WillContinue != nil ||
+			p.Incomplete = p.Incomplete || len(response.Parts) != 0 || response.WillContinue != nil ||
 				response.Scheduling != ""
 		}
-		p.Unsupported = !writeToolText(&text, data) || p.Unsupported
+		p.Incomplete = !writeToolText(&text, data) || p.Incomplete
 		remaining := *part
 		remaining.Text, remaining.FunctionCall, remaining.FunctionResponse = "", nil, nil
 		if !reflect.ValueOf(remaining).IsZero() {
-			p.Unsupported = true
-			text.WriteString("[unreviewed content retained]\n")
+			p.Incomplete = true
+			text.WriteString("[unsupported content]\n")
 		}
 	}
 	p.Text = text.String()
@@ -55,7 +53,7 @@ func writeToolText(text *strings.Builder, data any) bool {
 	}
 	encoded, err := json.Marshal(data)
 	if err != nil {
-		text.WriteString("[unreviewed tool data retained]\n")
+		text.WriteString("[unsupported tool data]\n")
 		return false
 	}
 	text.Write(encoded)

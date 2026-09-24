@@ -230,6 +230,11 @@ func TestSkipsShortOrUnknownContext(t *testing.T) {
 	if _, err := apply(t, testConfig(api), callbackContext{parent: t.Context(), input: current}, request); err != nil {
 		t.Fatal(err)
 	}
+	current = &genai.Content{Role: "custom", Parts: []*genai.Part{{Text: "Current"}}}
+	request.Contents = []*genai.Content{user("Old"), reply("Done"), current}
+	if _, err := apply(t, testConfig(api), callbackContext{parent: t.Context(), input: current}, request); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestSingleEvaluationAndRequestLimit(t *testing.T) {

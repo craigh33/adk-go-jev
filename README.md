@@ -176,7 +176,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution gu
 - [`agent/systemone`](agent/systemone): classification and routing agents.
 - [`callbacks/systemone`](callbacks/systemone): model and tool assessment callbacks.
 - [`plugin/contextfilter`](plugin/contextfilter): request-only conversation filtering.
-- [`internal/mappers`](internal/mappers): request and response conversions.
+- [`internal/adkcontent`](internal/adkcontent): ADK content-to-text conversion.
 - [`internal/typesafe`](internal/typesafe): generated API wire types.
 - [`api`](api): generation configuration and Go type overlays.
 - [`examples`](examples): runnable direct-client and ADK examples.
