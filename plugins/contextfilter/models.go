@@ -1,6 +1,10 @@
 package contextfilter
 
-import "github.com/craigh33/adk-go-typesafe/typesafe"
+import (
+	"google.golang.org/genai"
+
+	"github.com/craigh33/adk-go-typesafe/typesafe"
+)
 
 // Decision describes an assessed turn in the original request's Contents.
 type Decision struct {
@@ -17,6 +21,23 @@ type Report struct {
 	RemovedTurns int
 	Usage        typesafe.Usage
 	Err          error
+}
+
+type contextFilter struct {
+	cfg Config
+}
+
+type conversation struct {
+	contents      []*genai.Content
+	turns         []turn
+	latestRequest string
+	instructions  string
+}
+
+type batch struct {
+	request *typesafe.Request
+	turns   []turn
+	size    int
 }
 
 type turn struct {

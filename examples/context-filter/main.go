@@ -17,7 +17,7 @@ import (
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/genai"
 
-	"github.com/craigh33/adk-go-typesafe/plugin/contextfilter"
+	"github.com/craigh33/adk-go-typesafe/plugins/contextfilter"
 	"github.com/craigh33/adk-go-typesafe/typesafe"
 )
 

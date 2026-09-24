@@ -127,7 +127,7 @@ Set `OutputKey` to persist the latest assessment and decision. API, policy, and 
 
 ## Dynamic context filter
 
-`plugin/contextfilter` is a native ADK runner plugin that selects relevant historical turns before each model call using Jev Noul judgments:
+`plugins/contextfilter` is a native ADK runner plugin that selects relevant historical turns before each model call using Jev Noul judgments:
 
 ```go
 filter, err := contextfilter.New(contextfilter.Config{
@@ -145,7 +145,7 @@ Set `Observe: false` to apply removals. Defaults protect two recent turns, skip 
 
 Filtering selects original messages for the outgoing request without modifying saved history. Older turns can return when ADK supplies them again; filtering cannot restore originals already replaced by ADK compaction. ADK runs plugins before agent callbacks. Assessments that need the complete request must run in an earlier runner plugin.
 
-Each model call makes at most one Jev evaluation, capped at 64 KiB of JSON (`MaxRequestBytes`) and a two-second timeout. These are configurable byte/time budgets, not token limits. Failed or oversized evaluations leave history unchanged; parent cancellation propagates. `OnReport` exposes proposed ranges, actual removals, review errors and Jev usage. Measure downstream usage and latency separately. See the [context-filter example](examples/context-filter) for complete wiring.
+Historical turns are reviewed in sequential batches capped at 64 KiB of JSON (`MaxRequestBytes`), including questions and repeated protected context. All batches share a two-second timeout. These are configurable byte/time budgets, not token limits. Oversized turns stay intact; oversized protected context skips review. An evaluation failure stops further batches, retaining failed and unreviewed turns while allowing earlier valid decisions to apply. Parent cancellation prevents removals and propagates. `OnReport` runs once with proposed ranges, actual removals, review errors and aggregate known Jev usage. Measure downstream usage and latency separately. See the [context-filter example](examples/context-filter) for complete wiring.
 
 ## Examples
 
@@ -175,8 +175,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development tools and contribution gu
 - [`tools/systemone`](tools/systemone): ADK tools for System One evaluations.
 - [`agent/systemone`](agent/systemone): classification and routing agents.
 - [`callbacks/systemone`](callbacks/systemone): model and tool assessment callbacks.
-- [`plugin/contextfilter`](plugin/contextfilter): request-only conversation filtering.
-- [`internal/adkcontent`](internal/adkcontent): ADK content-to-text conversion.
+- [`plugins/contextfilter`](plugins/contextfilter): request-only conversation filtering.
+- [`internal/mappers`](internal/mappers): reusable ADK content and TypeSafe response conversions.
 - [`internal/typesafe`](internal/typesafe): generated API wire types.
 - [`api`](api): generation configuration and Go type overlays.
 - [`examples`](examples): runnable direct-client and ADK examples.
